@@ -2,13 +2,16 @@ package main
 
 import (
 	"net"
+	"strings"
+	"tcp-server/channel"
 	c "tcp-server/client"
 	s "tcp-server/server"
 	"testing"
 )
 
 var server = &s.Server{
-	Clients: make(map[net.Conn]*c.Client),
+	Clients:  make(map[net.Conn]*c.Client),
+	Channels: make(map[string]*channel.Channel),
 }
 
 var conn net.Conn
@@ -45,4 +48,22 @@ func TestSetClientName(t *testing.T) {
 	if server.Clients[conn].Name != "Jon" {
 		t.Errorf("%s is different than %s", "Jon", server.Clients[conn].Name)
 	}
+}
+
+func TestGetChanne(t *testing.T) {
+	server.Channels["general"] = &channel.Channel{
+		Name: "general",
+	}
+	server.Channels["dev"] = &channel.Channel{
+		Name: "dev",
+	}
+
+	expectedChannels := 2
+	temp := server.GetChannels()
+	actualChannels := strings.Split(temp, ",")
+
+	if expectedChannels != len(actualChannels) {
+		t.Errorf("got %s, expected %d", actualChannels, expectedChannels)
+	}
+
 }
