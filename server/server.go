@@ -83,12 +83,58 @@ func (server *Server) HandleCreateCommand(cmd command.Command) {
 		channelName := cmd.Args[0]
 		result := server.CreateChannel(channelName)
 		if result {
-			fmt.Printf("%s %s", utils.CurrentTime(), notify.CLIENT_CREATED_CHANNEL)
+			fmt.Printf("%s %s\n", utils.CurrentTime(), notify.CLIENT_CREATED_CHANNEL)
 			utils.WriteToConn(cmd.Client, channelName+" channel created")
 		} else {
-			fmt.Printf("Client tried to create a channel with a name already in used")
+			fmt.Printf("%s\n", "Client tried to create a channel with a name already in used")
 			utils.WriteToConn(cmd.Client, channelName+" channel already exists!")
 		}
+	}
+}
+
+// send message to all clients in a channel
+func (server *Server) Broadcast(message string, channel string, currentClient net.Conn) {
+	members := server.Channels[channel].Members
+	clientObj := server.Clients[currentClient]
+	for _, member := range members {
+		if member.Conn != clientObj.Conn {
+			// fmt.Println(member.Name)
+			member.Conn.Write([]byte("> " + clientObj.Name + " joined " + channel + "\n"))
+		}
+	}
+}
+
+// handles 'join' command
+func (server *Server) HandleJoinCommand(cmd command.Command) {
+	if !cmd.CheckArgs(1) {
+		fmt.Printf("%s %s\n", utils.CurrentTime(), notify.USAGE_JOIN)
+		utils.WriteToConn(cmd.Client, notify.USAGE_JOIN)
+	} else {
+		channelName := cmd.Args[0]
+		result := server.JoinChannel(cmd.Client, channelName)
+		if result {
+			fmt.Printf("%s %s %s\n", utils.CurrentTime(), notify.CLIENT_JOIN_CHANNEL, channelName)
+			utils.WriteToConn(cmd.Client, fmt.Sprintf("You joined '%s'", channelName))
+			// broadcast notification to members in the channel
+			server.Broadcast("", channelName, cmd.Client)
+		} else {
+			fmt.Printf("%s %s", utils.CurrentTime(), "User tried to join a channel that does no exist")
+			utils.WriteToConn(cmd.Client, fmt.Sprintf("'%s' channel does not exist", channelName))
+		}
+	}
+}
+
+// adds a client to the specified channel, returns true if ok
+func (server *Server) JoinChannel(client net.Conn, channelName string) bool {
+	channelExists := server.channelExists(channelName)
+	clientToAdd := server.Clients[client]
+
+	if channelExists {
+		server.Channels[channelName].Members[clientToAdd.Conn] = *clientToAdd
+		clientToAdd.CurrentChannel = channelName
+		return true
+	} else {
+		return false
 	}
 }
 
@@ -119,6 +165,12 @@ func (server *Server) CreateChannel(channelName string) bool {
 func (server *Server) GetChannels() string {
 	var channels []string
 	for _, channel := range server.Channels {
+		fmt.Println(channel.Name)
+		for _, member := range channel.Members {
+			fmt.Println("\t", member.Name)
+		}
+	}
+	for _, channel := range server.Channels {
 		channels = append(channels, channel.Name)
 	}
 	return strings.Join(channels, ", ")
@@ -135,6 +187,8 @@ func (server *Server) ReadCommandsFromClient() {
 			server.HandleListCommand(cmd)
 		case "/create":
 			server.HandleCreateCommand(cmd)
+		case "/join":
+			server.HandleJoinCommand(cmd)
 		default:
 			fmt.Printf("%s %s\n", utils.CurrentTime(), notify.INVALID_REQUEST)
 			utils.WriteToConn(cmd.Client, notify.INVALID_REQUEST)

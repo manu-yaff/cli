@@ -12,6 +12,7 @@ type Client struct {
 	Conn           net.Conn
 	Name           string
 	CurrentCommand chan<- command.Command
+	CurrentChannel string
 }
 
 func ConnectToServer(address string, port string) net.Conn {
