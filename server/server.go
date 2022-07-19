@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"tcp-server/channel"
+	"tcp-server/client"
 	c "tcp-server/client"
 	"tcp-server/command"
 	er "tcp-server/constants/errors"
@@ -51,14 +52,13 @@ func (server *Server) ListenForConnections() {
 
 // handles the 'name' command
 func (server *Server) HandleNameCommand(cmd command.Command) {
-	currTime := utils.CurrentTime()
 	if !cmd.CheckArgs(1) {
 		// args are not in the correct format
-		fmt.Printf("%s %s\n", currTime, notify.USAGE_NAME)
+		fmt.Printf("%s %s\n", utils.CurrentTime(), notify.USAGE_NAME)
 		utils.WriteToConn(cmd.Client, notify.USAGE_NAME)
 	} else {
 		server.SetClientName(cmd.Args[0], cmd.Client)
-		fmt.Printf("%s %s\n", currTime, notify.CLIENT_CHANGED_NAME)
+		fmt.Printf("%s %s\n", utils.CurrentTime(), notify.CLIENT_CHANGED_NAME)
 		utils.WriteToConn(cmd.Client, "You changed your name to "+"'"+cmd.Args[0]+"'")
 	}
 }
@@ -71,6 +71,47 @@ func (server *Server) HandleListCommand(cmd command.Command) {
 		fmt.Printf("%s %s\n", utils.CurrentTime(), notify.CLIENT_LIST_CHANNELS)
 		channels := server.GetChannels()
 		utils.WriteToConn(cmd.Client, channels)
+	}
+}
+
+// handles 'create' command
+func (server *Server) HandleCreateCommand(cmd command.Command) {
+	if !cmd.CheckArgs(1) {
+		fmt.Printf("%s %s\n", utils.CurrentTime(), notify.USAGE_CREATE)
+		utils.WriteToConn(cmd.Client, notify.USAGE_CREATE)
+	} else {
+		channelName := cmd.Args[0]
+		result := server.CreateChannel(channelName)
+		if result {
+			fmt.Printf("%s %s", utils.CurrentTime(), notify.CLIENT_CREATED_CHANNEL)
+			utils.WriteToConn(cmd.Client, channelName+" channel created")
+		} else {
+			fmt.Printf("Client tried to create a channel with a name already in used")
+			utils.WriteToConn(cmd.Client, channelName+" channel already exists!")
+		}
+	}
+}
+
+// checks if channel exists
+func (server *Server) channelExists(channelName string) bool {
+	if _, ok := server.Channels[channelName]; ok {
+		return true
+	} else {
+		return false
+	}
+}
+
+// creates a new channel and return true if created successfully
+func (server *Server) CreateChannel(channelName string) bool {
+	if server.channelExists(channelName) {
+		return false
+	} else {
+		newChannel := &channel.Channel{
+			Name:    channelName,
+			Members: make(map[net.Conn]client.Client),
+		}
+		server.Channels[channelName] = newChannel
+		return true
 	}
 }
 
@@ -92,6 +133,8 @@ func (server *Server) ReadCommandsFromClient() {
 			server.HandleNameCommand(cmd)
 		case "/list":
 			server.HandleListCommand(cmd)
+		case "/create":
+			server.HandleCreateCommand(cmd)
 		default:
 			fmt.Printf("%s %s\n", utils.CurrentTime(), notify.INVALID_REQUEST)
 			utils.WriteToConn(cmd.Client, notify.INVALID_REQUEST)
