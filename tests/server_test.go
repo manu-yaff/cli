@@ -65,5 +65,20 @@ func TestGetChanne(t *testing.T) {
 	if expectedChannels != len(actualChannels) {
 		t.Errorf("got %s, expected %d", actualChannels, expectedChannels)
 	}
+}
 
+func TestCreateChannel(t *testing.T) {
+	created := server.CreateChannel("frontend")
+
+	if !created {
+		t.Errorf("Channel creation: got %t, expected %t", created, true)
+	}
+
+	if _, ok := server.Channels["general"]; !ok {
+		t.Errorf("Channel not added to server: got %t, expected %t", ok, true)
+	}
+
+	if len(server.Channels) != 3 {
+		t.Errorf("got %d, expected %d", len(server.Channels), 3)
+	}
 }
