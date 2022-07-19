@@ -3,6 +3,7 @@ package main
 
 import (
 	"net"
+	"tcp-server/channel"
 	"tcp-server/client"
 	"tcp-server/command"
 	s "tcp-server/server"
@@ -13,6 +14,7 @@ func main() {
 	// create server
 	server := &s.Server{
 		Clients:        make(map[net.Conn]*client.Client),
+		Channels:       make(map[string]*channel.Channel),
 		CurrentCommand: make(chan command.Command),
 	}
 

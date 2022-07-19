@@ -7,6 +7,8 @@ import (
 	"io"
 	"net"
 	"os"
+	"strings"
+	"tcp-server/channel"
 	c "tcp-server/client"
 	"tcp-server/command"
 	er "tcp-server/constants/errors"
@@ -17,6 +19,7 @@ import (
 type Server struct {
 	Listener       net.Listener
 	Clients        map[net.Conn]*c.Client
+	Channels       map[string]*channel.Channel
 	CurrentCommand chan command.Command
 	CurrentClient  *c.Client
 }
@@ -46,7 +49,8 @@ func (server *Server) ListenForConnections() {
 	}
 }
 
-func (server *Server) handleNameCommand(cmd command.Command) {
+// handles the 'name' command
+func (server *Server) HandleNameCommand(cmd command.Command) {
 	currTime := utils.CurrentTime()
 	if !cmd.CheckArgs(1) {
 		// args are not in the correct format
@@ -57,7 +61,26 @@ func (server *Server) handleNameCommand(cmd command.Command) {
 		fmt.Printf("%s %s\n", currTime, notify.CLIENT_CHANGED_NAME)
 		utils.WriteToConn(cmd.Client, "You changed your name to "+"'"+cmd.Args[0]+"'")
 	}
+}
 
+// handles 'list' command
+func (server *Server) HandleListCommand(cmd command.Command) {
+	if len(server.Channels) == 0 {
+		utils.WriteToConn(cmd.Client, "There are no channels. You can create one with /create [channelName]")
+	} else {
+		fmt.Printf("%s %s\n", utils.CurrentTime(), notify.CLIENT_LIST_CHANNELS)
+		channels := server.GetChannels()
+		utils.WriteToConn(cmd.Client, channels)
+	}
+}
+
+// returns the existing channels in an array
+func (server *Server) GetChannels() string {
+	var channels []string
+	for _, channel := range server.Channels {
+		channels = append(channels, channel.Name)
+	}
+	return strings.Join(channels, ", ")
 }
 
 // reads from commands from a channel
@@ -66,7 +89,9 @@ func (server *Server) ReadCommandsFromClient() {
 		cmd := <-server.CurrentCommand
 		switch cmd.Name {
 		case "/name":
-			server.handleNameCommand(cmd)
+			server.HandleNameCommand(cmd)
+		case "/list":
+			server.HandleListCommand(cmd)
 		default:
 			fmt.Printf("%s %s\n", utils.CurrentTime(), notify.INVALID_REQUEST)
 			utils.WriteToConn(cmd.Client, notify.INVALID_REQUEST)
@@ -97,7 +122,7 @@ func (server *Server) HandleClientConnection(conn *net.Conn) {
 		clientRequest, err := bufio.NewReader(*conn).ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
-				fmt.Printf("%s %s %s", utils.CurrentTime(), client.Conn.RemoteAddr(), notify.CLIENT_CONNECTION_CLOSED)
+				fmt.Printf("%s %s %s\n", utils.CurrentTime(), client.Conn.RemoteAddr(), notify.CLIENT_CONNECTION_CLOSED)
 			}
 			break
 		}
