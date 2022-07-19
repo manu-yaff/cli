@@ -82,3 +82,12 @@ func TestCreateChannel(t *testing.T) {
 		t.Errorf("got %d, expected %d", len(server.Channels), 3)
 	}
 }
+
+func TestJoinChannel(t *testing.T) {
+	server.JoinChannel(conn, "frontend")
+	expectedMembers := 1
+	actualMembers := len(server.Channels["frontend"].Members)
+	if actualMembers != expectedMembers {
+		t.Errorf("Channel members: got %d, expected %d", actualMembers, expectedMembers)
+	}
+}
