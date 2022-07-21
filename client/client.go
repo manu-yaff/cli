@@ -1,17 +1,19 @@
 package client
 
 import (
-	"bufio"
+	"bytes"
+	"encoding/gob"
 	"fmt"
+	"io"
 	"net"
 	"os"
-	"tcp-server/command"
+	"tcp-server/utils"
 )
 
 type Client struct {
 	Conn           net.Conn
 	Name           string
-	CurrentCommand chan<- command.Command
+	CurrentRequest chan<- utils.Request
 	CurrentChannel string
 }
 
@@ -24,19 +26,38 @@ func ConnectToServer(address string, port string) net.Conn {
 	return conn
 }
 
-func SendMessage(msg string, conn net.Conn) {
-	_, err := conn.Write([]byte(msg + "\n"))
+func SendRequest(request *utils.Request, conn net.Conn) {
+	err := gob.NewEncoder(conn).Encode(request)
 	if err != nil {
-		fmt.Println("error while sending message: ", err)
+		fmt.Println("Error sending file: ", err)
 	}
 }
 
 func ReadServer(conn net.Conn) {
 	for {
-		msg, err := bufio.NewReader(conn).ReadString('\n')
+		var serverResponse utils.Response
+		err := gob.NewDecoder(conn).Decode(&serverResponse)
 		if err != nil {
-			return
+			if err == io.EOF {
+				fmt.Println("Server closed the connection")
+				os.Exit(1)
+			}
+			fmt.Println(err)
 		}
-		fmt.Print(msg)
+		if serverResponse.File.Content != nil {
+			file, err := os.Create(conn.LocalAddr().String() + "-" + serverResponse.File.Filename)
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			b := bytes.NewReader(serverResponse.File.Content)
+			_, err = io.Copy(file, b)
+			if err != nil {
+				fmt.Println(err)
+			}
+			fmt.Println(serverResponse.Message)
+		} else {
+			fmt.Printf("> %s\n", serverResponse.Message)
+		}
 	}
 }

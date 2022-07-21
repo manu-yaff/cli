@@ -1,10 +1,30 @@
 package utils
 
 import (
+	"encoding/gob"
+	"fmt"
 	"net"
+	"os"
 	"strings"
 	"time"
 )
+
+type Request struct {
+	CommandName string
+	Args        []string
+	Content     []byte
+	Client      net.Conn
+}
+
+type FileResponse struct {
+	Filename string
+	Content  []byte
+}
+
+type Response struct {
+	Message string
+	File    FileResponse
+}
 
 // returns the current date in the format: yyyy/mm/dd hh:mm:ss
 func CurrentTime() string {
@@ -23,6 +43,33 @@ func FormatUserInput(userInput string) (string, []string) {
 }
 
 // wirtes message to the given conn
-func WriteToConn(conn net.Conn, message string) {
-	conn.Write([]byte("> " + message + "\n"))
+func WriteToConn(conn net.Conn, response *Response) {
+	err := gob.NewEncoder(conn).Encode(response)
+	if err != nil {
+		fmt.Println("Error sending response: ", err)
+	}
+}
+
+// checks that the arguments commands are the required
+func CheckArgs(expectedArgs int, actualArgs []string) bool {
+	if len(actualArgs) < expectedArgs {
+		return false
+	} else {
+		return true
+	}
+}
+
+// reads file and returns its content and extension
+func ReadFile(fileName string) []byte {
+	content, err := os.ReadFile(fileName)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return content
+}
+
+// gets the extension file
+func GetFileExtension(fileName string) string {
+	fileExtension := strings.Split(fileName, ".")[1]
+	return "." + fileExtension
 }

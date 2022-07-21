@@ -7,5 +7,5 @@ import (
 
 type Channel struct {
 	Name    string
-	Members map[net.Conn]client.Client
+	Members map[net.Conn]*client.Client
 }
