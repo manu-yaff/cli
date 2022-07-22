@@ -145,6 +145,9 @@ func (server *Server) HandleJoinCommand(request utils.Request) {
 			response := &utils.Response{
 				Message: fmt.Sprintf("You joined '%s'", channelName),
 			}
+			// add channel to the client
+			server.Clients[client].Channels = append(server.Clients[client].Channels, channelName)
+
 			utils.WriteToConn(client, response)
 			// broadcast notification to members in the channel
 			clientName := server.Clients[client].Name
@@ -300,6 +303,7 @@ func (server *Server) AddClientToLoby(conn *net.Conn) *c.Client {
 		Conn:           *conn,
 		Name:           "Anonymus",
 		CurrentRequest: server.CurrentRequest,
+		Date:           utils.CurrentTime(),
 	}
 	server.Clients[*conn] = newClient
 	return server.Clients[*conn]

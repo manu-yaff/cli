@@ -15,6 +15,8 @@ type Client struct {
 	Name           string
 	CurrentRequest chan<- utils.Request
 	CurrentChannel string
+	Date           string
+	Channels       []string
 }
 
 func ConnectToServer(address string, port string) net.Conn {
