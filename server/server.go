@@ -192,19 +192,27 @@ func (server *Server) HandleSendFileCommand(request utils.Request) {
 			Content:  request.Content,
 		}
 
-		message := fmt.Sprintf("%s shared '%s' through '%s' channel", clientName, fileName, channelName)
+		if len(server.Channels[channelName].Members) < 2 {
+			response := &utils.Response{
+				Message: "There are no members in the specified channel",
+			}
+			fmt.Printf("%s %s", utils.CurrentTime(), "there are no members")
+			utils.WriteToConn(client, response)
+		} else {
 
-		channelMembersResponse := &utils.Response{
-			Message: message,
-			File:    *fileResponse,
-		}
-		server.Broadcast(channelMembersResponse, request.Args[1], request.Client)
+			message := fmt.Sprintf("%s shared '%s' through '%s' channel", clientName, fileName, channelName)
+			channelMembersResponse := &utils.Response{
+				Message: message,
+				File:    *fileResponse,
+			}
+			server.Broadcast(channelMembersResponse, request.Args[1], request.Client)
 
-		clientMessage := fmt.Sprintf("You shared '%s' through '%s' channel", fileName, channelName)
-		clientResponse := &utils.Response{
-			Message: clientMessage,
+			clientMessage := fmt.Sprintf("You shared '%s' through '%s' channel", fileName, channelName)
+			clientResponse := &utils.Response{
+				Message: clientMessage,
+			}
+			utils.WriteToConn(client, clientResponse)
 		}
-		utils.WriteToConn(client, clientResponse)
 	}
 }
 
