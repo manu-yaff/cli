@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	c "tcp-server/client"
@@ -31,11 +32,17 @@ func main() {
 		}
 
 		if cmd == "/send" {
-			content := utils.ReadFile("sample-files/" + args[0])
-			request.Content = content
+			if _, err := os.Stat("sample-files/" + args[0]); errors.Is(err, os.ErrNotExist) {
+				fmt.Println("> Specified file does not exist")
+			} else {
+				content := utils.ReadFile("sample-files/" + args[0])
+				request.Content = content
+				c.SendRequest(request, conn)
+			}
+		} else {
+			// send request
+			c.SendRequest(request, conn)
 		}
 
-		// send request
-		c.SendRequest(request, conn)
 	}
 }

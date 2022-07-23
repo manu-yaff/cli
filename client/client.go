@@ -45,7 +45,15 @@ func ReadServer(conn net.Conn) {
 			fmt.Println(err)
 		}
 		if serverResponse.File.Content != nil {
-			file, err := os.Create(conn.LocalAddr().String() + "-" + serverResponse.File.Filename)
+			path := "storage-" + serverResponse.ClientName + "-" + serverResponse.ClientIp
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				err := os.Mkdir(path, os.ModePerm)
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+
+			file, err := os.Create(path + "/" + serverResponse.File.Filename)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -55,7 +63,7 @@ func ReadServer(conn net.Conn) {
 			if err != nil {
 				fmt.Println(err)
 			}
-			fmt.Println(serverResponse.Message)
+			fmt.Printf("> %s\n", serverResponse.Message)
 		} else {
 			fmt.Printf("> %s\n", serverResponse.Message)
 		}

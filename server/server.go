@@ -122,6 +122,8 @@ func (server *Server) Broadcast(response *utils.Response, channel string, curren
 	members := server.Channels[channel].Members
 	for _, member := range members {
 		if member.Conn != currentClient {
+			response.ClientIp = member.Conn.RemoteAddr().String()
+			response.ClientName = member.Name
 			utils.WriteToConn(member.Conn, response)
 		}
 	}
@@ -171,47 +173,62 @@ func (server *Server) HandleSendFileCommand(request utils.Request) {
 		response.Message = notify.USAGE_SEND
 		utils.WriteToConn(client, response)
 	} else {
-		// save file to server
-		file, err := os.Create("server-storage/" + request.Args[0])
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		b := bytes.NewReader(request.Content)
-		_, err = io.Copy(file, b)
-		if err != nil {
-			fmt.Println(err)
-		}
-
+		// get request information
 		clientName := server.Clients[client].Name
 		fileName := request.Args[0]
 		channelName := request.Args[1]
+		channel := server.Channels[channelName]
 
-		fileResponse := &utils.FileResponse{
-			Filename: fileName,
-			Content:  request.Content,
-		}
-
-		if len(server.Channels[channelName].Members) < 2 {
+		// check channel exist
+		if !server.ChannelExists(channelName) || !channel.IsMember(client) {
+			// if not channels doesn't exist
 			response := &utils.Response{
-				Message: "There are no members in the specified channel",
+				Message: fmt.Sprintf("'%s' channel does not exist or you are not part of it", channelName),
 			}
-			fmt.Printf("%s %s", utils.CurrentTime(), "there are no members")
 			utils.WriteToConn(client, response)
+			fmt.Printf("%s %s\n", utils.CurrentTime(), "channel doesn't exist or client is not a member")
 		} else {
 
-			message := fmt.Sprintf("%s shared '%s' through '%s' channel", clientName, fileName, channelName)
-			channelMembersResponse := &utils.Response{
-				Message: message,
-				File:    *fileResponse,
+			// create empty file
+			file, err := os.Create("server-storage/" + request.Args[0])
+			if err != nil {
+				fmt.Println(err)
 			}
-			server.Broadcast(channelMembersResponse, request.Args[1], request.Client)
 
-			clientMessage := fmt.Sprintf("You shared '%s' through '%s' channel", fileName, channelName)
-			clientResponse := &utils.Response{
-				Message: clientMessage,
+			// save file to server storage
+			b := bytes.NewReader(request.Content)
+			_, err = io.Copy(file, b)
+			if err != nil {
+				fmt.Println(err)
 			}
-			utils.WriteToConn(client, clientResponse)
+
+			fileResponse := &utils.FileResponse{
+				Filename: fileName,
+				Content:  request.Content,
+			}
+			// check that channel has more then 2 members
+			if len(server.Channels[channelName].Members) < 2 {
+				response := &utils.Response{
+					Message: "There are no members in the specified channel",
+				}
+				fmt.Printf("%s %s\n", utils.CurrentTime(), "there are no members")
+				utils.WriteToConn(client, response)
+			} else {
+
+				message := fmt.Sprintf("%s shared '%s' through '%s' channel", clientName, fileName, channelName)
+				channelMembersResponse := &utils.Response{
+					Message:  message,
+					File:     *fileResponse,
+					ClientIp: client.RemoteAddr().String(),
+				}
+				server.Broadcast(channelMembersResponse, request.Args[1], request.Client)
+
+				clientMessage := fmt.Sprintf("You shared '%s' through '%s' channel", fileName, channelName)
+				clientResponse := &utils.Response{
+					Message: clientMessage,
+				}
+				utils.WriteToConn(client, clientResponse)
+			}
 		}
 	}
 }

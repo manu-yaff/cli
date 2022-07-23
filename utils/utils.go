@@ -22,8 +22,10 @@ type FileResponse struct {
 }
 
 type Response struct {
-	Message string
-	File    FileResponse
+	Message    string
+	File       FileResponse
+	ClientName string
+	ClientIp   string
 }
 
 // returns the current date in the format: yyyy/mm/dd hh:mm:ss

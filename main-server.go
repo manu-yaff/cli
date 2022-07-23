@@ -10,7 +10,6 @@ import (
 )
 
 func main() {
-
 	// create server
 	server := &s.Server{
 		Clients:        make(map[net.Conn]*client.Client),
