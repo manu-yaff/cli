@@ -7,6 +7,7 @@ import (
 	"tcp-server/api"
 	"tcp-server/channel"
 	"tcp-server/client"
+	"tcp-server/file"
 	s "tcp-server/server"
 	"tcp-server/utils"
 
@@ -21,6 +22,7 @@ func main() {
 		Clients:        make(map[net.Conn]*client.Client),
 		Channels:       make(map[string]*channel.Channel),
 		CurrentRequest: make(chan utils.Request),
+		Files:          make(map[string]*file.File),
 	}
 
 	// create http server for browser client

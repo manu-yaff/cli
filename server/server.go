@@ -2,7 +2,6 @@
 package server
 
 import (
-	"bytes"
 	"encoding/gob"
 	"fmt"
 	"io"
@@ -11,17 +10,18 @@ import (
 	"strings"
 	"tcp-server/channel"
 	"tcp-server/client"
-	c "tcp-server/client"
 	er "tcp-server/constants/errors"
 	notify "tcp-server/constants/notifications"
+	f "tcp-server/file"
 	"tcp-server/utils"
 )
 
 type Server struct {
 	Listener       net.Listener
-	Clients        map[net.Conn]*c.Client
+	Clients        map[net.Conn]*client.Client
 	Channels       map[string]*channel.Channel
 	CurrentRequest chan utils.Request
+	Files          map[string]*f.File
 }
 
 // creates a tcp server on localhost:1234 and returns a listener object
@@ -169,11 +169,12 @@ func (server *Server) HandleJoinCommand(request utils.Request) {
 
 // handles 'send file' command
 func (server *Server) HandleSendFileCommand(request utils.Request) {
-	var response *utils.Response
 	client := request.Client
 	if !utils.CheckArgs(2, request.Args) {
 		fmt.Printf("%s %s\n", utils.CurrentTime(), notify.USAGE_SEND)
-		response.Message = notify.USAGE_SEND
+		response := &utils.Response{
+			Message: notify.USAGE_SEND,
+		}
 		utils.WriteToConn(client, response)
 	} else {
 		// get request information
@@ -193,17 +194,31 @@ func (server *Server) HandleSendFileCommand(request utils.Request) {
 		} else {
 
 			// create empty file
-			file, err := os.Create("server-storage/" + request.Args[0])
+
+			err := os.WriteFile("server-storage/"+fileName, request.Content, 0644)
 			if err != nil {
 				fmt.Println(err)
 			}
 
-			// save file to server storage
-			b := bytes.NewReader(request.Content)
-			_, err = io.Copy(file, b)
+			fi, err := os.Stat("server-storage/" + fileName)
 			if err != nil {
 				fmt.Println(err)
 			}
+
+			fileSize := fi.Size()
+
+			// file, err := os.Create("server-storage/" + request.Args[0])
+			// if err != nil {
+			// 	fmt.Println(err)
+			// }
+
+			// // save file to server storage
+			// b := bytes.NewReader(request.Content)
+			// _, err = io.Copy(file, b)
+
+			// if err != nil {
+			// 	fmt.Println(err)
+			// }
 
 			fileResponse := &utils.FileResponse{
 				Filename: fileName,
@@ -226,11 +241,22 @@ func (server *Server) HandleSendFileCommand(request utils.Request) {
 				}
 				server.Broadcast(channelMembersResponse, request.Args[1], request.Client)
 
+				// if file does not exist, then add it
+				if _, ok := server.Files[fileName]; !ok {
+					newFile := &f.File{
+						Name: fileName,
+						Size: fileSize,
+					}
+					server.Files[fileName] = newFile
+					server.Files[fileName].Channels = append(server.Files[fileName].Channels, channelName)
+				}
+
 				clientMessage := fmt.Sprintf("You shared '%s' through '%s' channel", fileName, channelName)
 				clientResponse := &utils.Response{
 					Message: clientMessage,
 				}
 				utils.WriteToConn(client, clientResponse)
+				fmt.Printf("%s %s\n", utils.CurrentTime(), "client shared file")
 			}
 		}
 	}
@@ -315,8 +341,8 @@ func (server *Server) SetClientName(clientName string, client net.Conn) {
 }
 
 // add a client to the loby
-func (server *Server) AddClientToLoby(conn *net.Conn) *c.Client {
-	newClient := &c.Client{
+func (server *Server) AddClientToLoby(conn *net.Conn) *client.Client {
+	newClient := &client.Client{
 		Conn:           *conn,
 		Name:           "Anonymus",
 		CurrentRequest: server.CurrentRequest,
