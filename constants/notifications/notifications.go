@@ -4,6 +4,7 @@ const (
 	USAGE_NAME               = "usage: /name [name]"
 	USAGE_CREATE             = "usage: /create [channelName]"
 	USAGE_JOIN               = "usage: /join [channelName]"
+	USAGE_SEND               = "usage: /send [fileName] [channelName]"
 	CLIENT_CHANGED_NAME      = "client changed their name"
 	CLIENT_JOIN_CHANNEL      = "client joined"
 	CLIENT_CREATED_CHANNEL   = "client created channel"

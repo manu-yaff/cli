@@ -1,17 +1,14 @@
 package command
 
-import "net"
+// type Command struct {
+// 	Request utils.Request
+// 	Client  net.Conn
+// }
 
-type Command struct {
-	Name   string
-	Client net.Conn
-	Args   []string
-}
-
-func (c *Command) CheckArgs(numberArgs int) bool {
-	if len(c.Args) < numberArgs {
-		return false
-	} else {
-		return true
-	}
-}
+// func (c *Command) CheckArgs(numberArgs int) bool {
+// 	if len(c.Request.Args) < numberArgs {
+// 		return false
+// 	} else {
+// 		return true
+// 	}
+// }

@@ -2,7 +2,8 @@
 package server
 
 import (
-	"bufio"
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"io"
 	"net"
@@ -11,7 +12,6 @@ import (
 	"tcp-server/channel"
 	"tcp-server/client"
 	c "tcp-server/client"
-	"tcp-server/command"
 	er "tcp-server/constants/errors"
 	notify "tcp-server/constants/notifications"
 	"tcp-server/utils"
@@ -21,8 +21,7 @@ type Server struct {
 	Listener       net.Listener
 	Clients        map[net.Conn]*c.Client
 	Channels       map[string]*channel.Channel
-	CurrentCommand chan command.Command
-	CurrentClient  *c.Client
+	CurrentRequest chan utils.Request
 }
 
 // creates a tcp server on localhost:1234 and returns a listener object
@@ -51,86 +50,196 @@ func (server *Server) ListenForConnections() {
 }
 
 // handles the 'name' command
-func (server *Server) HandleNameCommand(cmd command.Command) {
-	if !cmd.CheckArgs(1) {
+func (server *Server) HandleNameCommand(request utils.Request) {
+	if !utils.CheckArgs(1, request.Args) {
 		// args are not in the correct format
 		fmt.Printf("%s %s\n", utils.CurrentTime(), notify.USAGE_NAME)
-		utils.WriteToConn(cmd.Client, notify.USAGE_NAME)
+		// utils.WriteToConn(request.Client, notify.USAGE_NAME)
+		response := &utils.Response{
+			Message: notify.USAGE_NAME,
+		}
+		utils.WriteToConn(request.Client, response)
 	} else {
-		server.SetClientName(cmd.Args[0], cmd.Client)
+		clientName := request.Args[0]
+		client := request.Client
+		server.SetClientName(clientName, client)
 		fmt.Printf("%s %s\n", utils.CurrentTime(), notify.CLIENT_CHANGED_NAME)
-		utils.WriteToConn(cmd.Client, "You changed your name to "+"'"+cmd.Args[0]+"'")
+		response := &utils.Response{
+			Message: fmt.Sprintf("You changed your name to '%s'", clientName),
+		}
+		utils.WriteToConn(request.Client, response)
 	}
 }
 
 // handles 'list' command
-func (server *Server) HandleListCommand(cmd command.Command) {
+func (server *Server) HandleListCommand(request utils.Request) {
+	client := request.Client
 	if len(server.Channels) == 0 {
-		utils.WriteToConn(cmd.Client, "There are no channels. You can create one with /create [channelName]")
+		response := &utils.Response{
+			Message: "There are no channels. You can create one with /create [channelName]",
+		}
+		utils.WriteToConn(client, response)
 	} else {
 		fmt.Printf("%s %s\n", utils.CurrentTime(), notify.CLIENT_LIST_CHANNELS)
 		channels := server.GetChannels()
-		utils.WriteToConn(cmd.Client, channels)
+		response := &utils.Response{
+			Message: channels,
+		}
+		utils.WriteToConn(client, response)
 	}
 }
 
 // handles 'create' command
-func (server *Server) HandleCreateCommand(cmd command.Command) {
-	if !cmd.CheckArgs(1) {
+func (server *Server) HandleCreateCommand(request utils.Request) {
+	client := request.Client
+	if !utils.CheckArgs(1, request.Args) {
 		fmt.Printf("%s %s\n", utils.CurrentTime(), notify.USAGE_CREATE)
-		utils.WriteToConn(cmd.Client, notify.USAGE_CREATE)
+		response := &utils.Response{
+			Message: notify.USAGE_CREATE,
+		}
+		utils.WriteToConn(client, response)
 	} else {
-		channelName := cmd.Args[0]
+		channelName := request.Args[0]
 		result := server.CreateChannel(channelName)
 		if result {
 			fmt.Printf("%s %s\n", utils.CurrentTime(), notify.CLIENT_CREATED_CHANNEL)
-			utils.WriteToConn(cmd.Client, channelName+" channel created")
+			response := &utils.Response{
+				Message: fmt.Sprintf("%s channel created", channelName),
+			}
+			utils.WriteToConn(client, response)
 		} else {
 			fmt.Printf("%s\n", "Client tried to create a channel with a name already in used")
-			utils.WriteToConn(cmd.Client, channelName+" channel already exists!")
+			response := &utils.Response{
+				Message: fmt.Sprintf("%s channel already exists!", channelName),
+			}
+			utils.WriteToConn(client, response)
 		}
 	}
 }
 
 // send message to all clients in a channel
-func (server *Server) Broadcast(message string, channel string, currentClient net.Conn) {
+func (server *Server) Broadcast(response *utils.Response, channel string, currentClient net.Conn) {
 	members := server.Channels[channel].Members
-	clientObj := server.Clients[currentClient]
 	for _, member := range members {
-		if member.Conn != clientObj.Conn {
-			// fmt.Println(member.Name)
-			member.Conn.Write([]byte("> " + clientObj.Name + " joined " + channel + "\n"))
+		if member.Conn != currentClient {
+			response.ClientIp = member.Conn.RemoteAddr().String()
+			response.ClientName = member.Name
+			utils.WriteToConn(member.Conn, response)
 		}
 	}
 }
 
 // handles 'join' command
-func (server *Server) HandleJoinCommand(cmd command.Command) {
-	if !cmd.CheckArgs(1) {
+func (server *Server) HandleJoinCommand(request utils.Request) {
+	client := request.Client
+	// if !utils.CheckArgs(1, request.Args) {
+	if !utils.CheckArgs(1, request.Args) {
 		fmt.Printf("%s %s\n", utils.CurrentTime(), notify.USAGE_JOIN)
-		utils.WriteToConn(cmd.Client, notify.USAGE_JOIN)
+		response := &utils.Response{
+			Message: notify.USAGE_JOIN,
+		}
+		utils.WriteToConn(client, response)
 	} else {
-		channelName := cmd.Args[0]
-		result := server.JoinChannel(cmd.Client, channelName)
+		channelName := request.Args[0]
+		result := server.JoinChannel(client, channelName)
 		if result {
 			fmt.Printf("%s %s %s\n", utils.CurrentTime(), notify.CLIENT_JOIN_CHANNEL, channelName)
-			utils.WriteToConn(cmd.Client, fmt.Sprintf("You joined '%s'", channelName))
+			response := &utils.Response{
+				Message: fmt.Sprintf("You joined '%s'", channelName),
+			}
+			utils.WriteToConn(client, response)
 			// broadcast notification to members in the channel
-			server.Broadcast("", channelName, cmd.Client)
+			clientName := server.Clients[client].Name
+			broadcastResponse := &utils.Response{
+				Message: fmt.Sprintf("%s joined %s", clientName, channelName),
+			}
+			server.Broadcast(broadcastResponse, channelName, client)
 		} else {
-			fmt.Printf("%s %s", utils.CurrentTime(), "User tried to join a channel that does no exist")
-			utils.WriteToConn(cmd.Client, fmt.Sprintf("'%s' channel does not exist", channelName))
+			fmt.Printf("%s %s\n", utils.CurrentTime(), "User tried to join a channel that does no exist")
+			response := &utils.Response{
+				Message: fmt.Sprintf("'%s' channel does not exist", channelName),
+			}
+			utils.WriteToConn(client, response)
+		}
+	}
+}
+
+// handles 'send file' command
+func (server *Server) HandleSendFileCommand(request utils.Request) {
+	var response *utils.Response
+	client := request.Client
+	if !utils.CheckArgs(2, request.Args) {
+		fmt.Printf("%s %s\n", utils.CurrentTime(), notify.USAGE_SEND)
+		response.Message = notify.USAGE_SEND
+		utils.WriteToConn(client, response)
+	} else {
+		// get request information
+		clientName := server.Clients[client].Name
+		fileName := request.Args[0]
+		channelName := request.Args[1]
+		channel := server.Channels[channelName]
+
+		// check channel exist
+		if !server.ChannelExists(channelName) || !channel.IsMember(client) {
+			// if not channels doesn't exist
+			response := &utils.Response{
+				Message: fmt.Sprintf("'%s' channel does not exist or you are not part of it", channelName),
+			}
+			utils.WriteToConn(client, response)
+			fmt.Printf("%s %s\n", utils.CurrentTime(), "channel doesn't exist or client is not a member")
+		} else {
+
+			// create empty file
+			file, err := os.Create("server-storage/" + request.Args[0])
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			// save file to server storage
+			b := bytes.NewReader(request.Content)
+			_, err = io.Copy(file, b)
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			fileResponse := &utils.FileResponse{
+				Filename: fileName,
+				Content:  request.Content,
+			}
+			// check that channel has more then 2 members
+			if len(server.Channels[channelName].Members) < 2 {
+				response := &utils.Response{
+					Message: "There are no members in the specified channel",
+				}
+				fmt.Printf("%s %s\n", utils.CurrentTime(), "there are no members")
+				utils.WriteToConn(client, response)
+			} else {
+
+				message := fmt.Sprintf("%s shared '%s' through '%s' channel", clientName, fileName, channelName)
+				channelMembersResponse := &utils.Response{
+					Message:  message,
+					File:     *fileResponse,
+					ClientIp: client.RemoteAddr().String(),
+				}
+				server.Broadcast(channelMembersResponse, request.Args[1], request.Client)
+
+				clientMessage := fmt.Sprintf("You shared '%s' through '%s' channel", fileName, channelName)
+				clientResponse := &utils.Response{
+					Message: clientMessage,
+				}
+				utils.WriteToConn(client, clientResponse)
+			}
 		}
 	}
 }
 
 // adds a client to the specified channel, returns true if ok
 func (server *Server) JoinChannel(client net.Conn, channelName string) bool {
-	channelExists := server.channelExists(channelName)
+	channelExists := server.ChannelExists(channelName)
 	clientToAdd := server.Clients[client]
 
 	if channelExists {
-		server.Channels[channelName].Members[clientToAdd.Conn] = *clientToAdd
+		server.Channels[channelName].Members[clientToAdd.Conn] = clientToAdd
 		clientToAdd.CurrentChannel = channelName
 		return true
 	} else {
@@ -139,7 +248,7 @@ func (server *Server) JoinChannel(client net.Conn, channelName string) bool {
 }
 
 // checks if channel exists
-func (server *Server) channelExists(channelName string) bool {
+func (server *Server) ChannelExists(channelName string) bool {
 	if _, ok := server.Channels[channelName]; ok {
 		return true
 	} else {
@@ -149,12 +258,12 @@ func (server *Server) channelExists(channelName string) bool {
 
 // creates a new channel and return true if created successfully
 func (server *Server) CreateChannel(channelName string) bool {
-	if server.channelExists(channelName) {
+	if server.ChannelExists(channelName) {
 		return false
 	} else {
 		newChannel := &channel.Channel{
 			Name:    channelName,
-			Members: make(map[net.Conn]client.Client),
+			Members: make(map[net.Conn]*client.Client),
 		}
 		server.Channels[channelName] = newChannel
 		return true
@@ -164,34 +273,35 @@ func (server *Server) CreateChannel(channelName string) bool {
 // returns the existing channels in an array
 func (server *Server) GetChannels() string {
 	var channels []string
+	channels = append(channels, "Channels:")
 	for _, channel := range server.Channels {
-		fmt.Println(channel.Name)
-		for _, member := range channel.Members {
-			fmt.Println("\t", member.Name)
-		}
+		channels = append(channels, "- "+channel.Name)
 	}
-	for _, channel := range server.Channels {
-		channels = append(channels, channel.Name)
-	}
-	return strings.Join(channels, ", ")
+	return strings.Join(channels, "\n")
 }
 
 // reads from commands from a channel
-func (server *Server) ReadCommandsFromClient() {
+func (server *Server) ReadClientRequest() {
 	for {
-		cmd := <-server.CurrentCommand
-		switch cmd.Name {
+		request := <-server.CurrentRequest
+		cmd := request.CommandName
+		switch cmd {
 		case "/name":
-			server.HandleNameCommand(cmd)
+			server.HandleNameCommand(request)
 		case "/list":
-			server.HandleListCommand(cmd)
+			server.HandleListCommand(request)
 		case "/create":
-			server.HandleCreateCommand(cmd)
+			server.HandleCreateCommand(request)
 		case "/join":
-			server.HandleJoinCommand(cmd)
+			server.HandleJoinCommand(request)
+		case "/send":
+			server.HandleSendFileCommand(request)
 		default:
 			fmt.Printf("%s %s\n", utils.CurrentTime(), notify.INVALID_REQUEST)
-			utils.WriteToConn(cmd.Client, notify.INVALID_REQUEST)
+			response := &utils.Response{
+				Message: notify.INVALID_REQUEST,
+			}
+			utils.WriteToConn(request.Client, response)
 		}
 	}
 }
@@ -206,7 +316,7 @@ func (server *Server) AddClientToLoby(conn *net.Conn) *c.Client {
 	newClient := &c.Client{
 		Conn:           *conn,
 		Name:           "Anonymus",
-		CurrentCommand: server.CurrentCommand,
+		CurrentRequest: server.CurrentRequest,
 	}
 	server.Clients[*conn] = newClient
 	return server.Clients[*conn]
@@ -216,7 +326,8 @@ func (server *Server) AddClientToLoby(conn *net.Conn) *c.Client {
 func (server *Server) HandleClientConnection(conn *net.Conn) {
 	client := server.AddClientToLoby(conn)
 	for {
-		clientRequest, err := bufio.NewReader(*conn).ReadString('\n')
+		var clientInput utils.Request
+		err := gob.NewDecoder(*conn).Decode(&clientInput)
 		if err != nil {
 			if err == io.EOF {
 				fmt.Printf("%s %s %s\n", utils.CurrentTime(), client.Conn.RemoteAddr(), notify.CLIENT_CONNECTION_CLOSED)
@@ -224,13 +335,13 @@ func (server *Server) HandleClientConnection(conn *net.Conn) {
 			break
 		}
 
-		cmdName, args := utils.FormatUserInput(clientRequest)
-
-		cmd := &command.Command{
-			Name:   cmdName,
-			Client: *conn,
-			Args:   args,
+		clientRequest := &utils.Request{
+			CommandName: clientInput.CommandName,
+			Args:        clientInput.Args,
+			Content:     clientInput.Content,
+			Client:      *conn,
 		}
-		client.CurrentCommand <- *cmd
+
+		client.CurrentRequest <- *clientRequest
 	}
 }

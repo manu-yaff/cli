@@ -5,21 +5,20 @@ import (
 	"net"
 	"tcp-server/channel"
 	"tcp-server/client"
-	"tcp-server/command"
 	s "tcp-server/server"
+	"tcp-server/utils"
 )
 
 func main() {
-
 	// create server
 	server := &s.Server{
 		Clients:        make(map[net.Conn]*client.Client),
 		Channels:       make(map[string]*channel.Channel),
-		CurrentCommand: make(chan command.Command),
+		CurrentRequest: make(chan utils.Request),
 	}
 
 	// listen for commands from client in channel
-	go server.ReadCommandsFromClient()
+	go server.ReadClientRequest()
 
 	// start server
 	server.StartServer("1234")

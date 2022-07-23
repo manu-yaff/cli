@@ -50,7 +50,7 @@ func TestSetClientName(t *testing.T) {
 	}
 }
 
-func TestGetChanne(t *testing.T) {
+func TestGetChannels(t *testing.T) {
 	server.Channels["general"] = &channel.Channel{
 		Name: "general",
 	}
@@ -90,4 +90,9 @@ func TestJoinChannel(t *testing.T) {
 	if actualMembers != expectedMembers {
 		t.Errorf("Channel members: got %d, expected %d", actualMembers, expectedMembers)
 	}
+}
+
+func TestShareFileToChannel(t *testing.T) {
+	conn := c.ConnectToServer("localhost", "2222")
+	server.JoinChannel(conn, "frontend")
 }
