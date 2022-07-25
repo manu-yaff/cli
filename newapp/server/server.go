@@ -6,7 +6,6 @@ import (
 	er "client-server/constants/errors"
 	notify "client-server/constants/notifications"
 	req "client-server/request"
-	res "client-server/response"
 	"client-server/utils"
 	"fmt"
 	"io"
@@ -51,11 +50,6 @@ func (server *Server) ReadClientRequest() {
 		request := <-server.CurrentRequest
 		cmd := request.CommandName
 
-		response := &res.Response{
-			Message: "test",
-		}
-		utils.WriteResponse(&request.Client, response)
-
 		switch cmd {
 		case "/name":
 			// server.HandleNameCommand(request)
@@ -66,7 +60,8 @@ func (server *Server) ReadClientRequest() {
 		case "/join":
 			// server.HandleJoinCommand(request)
 		case "/send":
-			// server.HandleSendFileCommand(request)
+			server.HandleSendFileCommand(&request)
+			fmt.Println(server.Channels[request.Args[1]])
 		default:
 			// fmt.Printf("%s %s\n", utils.CurrentTime(), notify.INVALID_REQUEST)
 			// response := &utils.Response{
@@ -77,6 +72,7 @@ func (server *Server) ReadClientRequest() {
 	}
 }
 
+// listens for the incoming request and sends the message to the channel
 func (server *Server) HandleClientConnection(conn *net.Conn) {
 	// add client to server
 	client := server.AddClient(conn)
@@ -88,6 +84,8 @@ func (server *Server) HandleClientConnection(conn *net.Conn) {
 		if err != nil {
 			if err == io.EOF {
 				fmt.Printf("%s %s %s\n", utils.CurrentTime(), client.Conn.RemoteAddr(), notify.CLIENT_CONNECTION_CLOSED)
+				(*conn).Close()
+				server.RemoveClient(conn)
 			} else {
 				fmt.Printf("%s %s %s\n", utils.CurrentTime(), er.ERROR_READING_REQUEST, err.Error())
 			}
@@ -105,6 +103,7 @@ func (server *Server) HandleClientConnection(conn *net.Conn) {
 	}
 }
 
+// adds a client to the server instance
 func (server *Server) AddClient(conn *net.Conn) *cl.Client {
 	newClient := &cl.Client{
 		Conn:           *conn,
@@ -114,4 +113,17 @@ func (server *Server) AddClient(conn *net.Conn) *cl.Client {
 	}
 	server.Clients[*conn] = newClient
 	return server.Clients[*conn]
+}
+
+// removes a client from a server instance
+func (server *Server) RemoveClient(conn *net.Conn) {
+	delete(server.Clients, *conn)
+}
+
+// checks if channel exists
+func (server *Server) ChannelExists(channelName string) bool {
+	if _, ok := server.Channels[channelName]; ok {
+		return true
+	}
+	return false
 }

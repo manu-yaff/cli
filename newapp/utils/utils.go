@@ -64,11 +64,11 @@ func ReadResponse(conn *net.Conn, dest *res.Response) error {
 }
 
 // checks if file exists, returns false if not
-func FileExists(filename string) error {
+func FileExists(filename string) bool {
 	if _, err := os.Stat(filename); errors.Is(err, os.ErrNotExist) {
-		return err
+		return false
 	}
-	return nil
+	return true
 }
 
 // reads file and returns its content
@@ -78,4 +78,13 @@ func ReadFile(fileName string) ([]byte, error) {
 		return []byte{}, err
 	}
 	return content, nil
+}
+
+// writes a file
+func WriteFile(filepath string, content []byte) error {
+	err := os.WriteFile("server-storage/"+filepath, content, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
 }

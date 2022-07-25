@@ -2,6 +2,7 @@ package clientHandler
 
 import (
 	er "client-server/constants/errors"
+	notify "client-server/constants/notifications"
 	req "client-server/request"
 	"client-server/utils"
 	"fmt"
@@ -16,12 +17,17 @@ func HandleInputCommand(cmd string, args []string, conn *net.Conn) {
 }
 
 func HandleSendCommand(cmd string, args []string, conn *net.Conn) {
+	// check arguments are in the correct format
+	if len(args) != 2 {
+		fmt.Printf("%s %s\n", utils.CurrentTime(), notify.USAGE_SEND)
+		return
+	}
+
 	filename := args[0]
 
 	// check file exist
-	err := utils.FileExists(filename)
-	if err != nil {
-		fmt.Printf("%s %s %s", utils.CurrentTime(), er.ERROR_FILE_NOT_EXISTS, err.Error())
+	if !utils.FileExists(filename) {
+		fmt.Printf("%s '%s %s\n", utils.CurrentTime(), filename, er.ERROR_FILE_NOT_EXISTS)
 	} else {
 		// file exists
 

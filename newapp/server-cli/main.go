@@ -16,6 +16,10 @@ func main() {
 		CurrentRequest: make(chan req.Request),
 	}
 
+	server.Channels["dev"] = &ch.Channel{
+		Name: "dev",
+	}
+
 	// listen for commands from the client
 	go server.ReadClientRequest()
 

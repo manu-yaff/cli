@@ -21,7 +21,7 @@ type Client struct {
 	Channels       []string
 }
 
-// connects to a client and returns the conn object
+// connects to the server and returns the conn object
 func ConnectToServer(address string, port string) net.Conn {
 	conn, err := net.Dial("tcp", address+":"+port)
 	if err != nil {
