@@ -170,7 +170,7 @@ func (server *Server) HandleListCommand(request *req.Request) {
 	})
 }
 
-// creates a new channel
+// handles logic to create a command
 func (server *Server) HandleCreateCommand(request *req.Request) {
 	channelName := request.Args[0]
 	conn := request.Client
@@ -196,4 +196,46 @@ func (server *Server) HandleCreateCommand(request *req.Request) {
 		})
 		fmt.Printf("%s Error creating '%s' channel \n", utils.CurrentTime(), channelName)
 	}
+}
+
+// handles logic to leave a channel
+func (server *Server) HandleLeaveCommand(request *req.Request) {
+	channelName := request.Args[0]
+	conn := request.Client
+	client := server.Clients[conn]
+	channel := server.Channels[channelName]
+
+	// check channels exists
+	if !server.ChannelExists(channelName) {
+		fmt.Printf("%s Channel does not exist\n", utils.CurrentTime())
+		utils.WriteResponse(&conn, &res.Response{
+			Message: fmt.Sprintf("'%s' channel does not exist", channelName),
+		})
+		return
+	}
+
+	// check client is member of channel
+	if !channel.HasMember(client) {
+		fmt.Printf("%s Client is not member in channel\n", utils.CurrentTime())
+		utils.WriteResponse(&conn, &res.Response{
+			Message: fmt.Sprintf("You are not member in '%s'", channelName),
+		})
+		return
+	}
+
+	// remove client from channels
+	channel.RemoveClientFromChannel(client)
+
+	// remove channel from client
+	server.RemoveChannelFromClient(client, channelName)
+
+	// send response and broadcast from members
+
+	fmt.Printf("%s Client left channel\n", utils.CurrentTime())
+	utils.WriteResponse(&conn, &res.Response{
+		Message: fmt.Sprintf("You left '%s'", channelName),
+	})
+	channel.Broadcast(&res.Response{
+		Message: fmt.Sprintf("%s left '%s' channel", client.Name, channelName),
+	}, conn)
 }

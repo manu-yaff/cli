@@ -20,6 +20,8 @@ func HandleInputCommand(cmd string, args []string, conn *net.Conn) {
 		HandleListChannels(cmd, args, conn)
 	case "/create":
 		HandleCreateCommand(cmd, args, conn)
+	case "/leave":
+		HandleLeaveCommand(cmd, args, conn)
 	default:
 		fmt.Println("Error: command not supported. Run /help to see the available commands")
 	}
@@ -112,6 +114,23 @@ func HandleListChannels(cmd string, args []string, conn *net.Conn) {
 func HandleCreateCommand(cmd string, args []string, conn *net.Conn) {
 	if len(args) != 1 {
 		fmt.Printf("%s \n", "Usage: /create [channel]")
+		return
+	}
+
+	err := utils.WriteRequest(conn, &req.Request{
+		CommandName: cmd,
+		Args:        args,
+	})
+
+	if err != nil {
+		fmt.Printf("%s Error sending request \n", utils.CurrentTime())
+	}
+}
+
+// checks arguments are correct for the leave command
+func HandleLeaveCommand(cmd string, args []string, conn *net.Conn) {
+	if len(args) != 1 {
+		fmt.Printf("%s \n", "Usage: /leave [channel]")
 		return
 	}
 

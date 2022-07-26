@@ -206,3 +206,35 @@ func TestCreateChannel(t *testing.T) {
 	}
 	clearServer()
 }
+
+// test leaveing a channel
+func TestLeaveChannel(t *testing.T) {
+	fmt.Println("Should leave a channel")
+	channel := &ch.Channel{
+		Name:    "frontend",
+		Members: make(map[net.Conn]*cl.Client),
+	}
+
+	conn, _ := net.Dial("tcp", "golang.org:80")
+	client := &cl.Client{
+		Conn: conn,
+		Name: "test",
+	}
+
+	testServer.AddClient(&client.Conn)
+	testServer.CreateChannel(channel.Name)
+	testServer.AddToChannel(client, channel)
+
+	channel.RemoveClientFromChannel(client)
+	testServer.RemoveChannelFromClient(client, channel.Name)
+
+	// check channel has 0 members
+	if len(channel.Members) != 0 {
+		t.Errorf("got %d, expected %d", len(channel.Members), 0)
+	}
+
+	// check client has 0 channels
+	if len(client.Channels) != 0 {
+		t.Errorf("got %d, expected %d", len(client.Channels), 0)
+	}
+}

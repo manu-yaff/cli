@@ -33,3 +33,8 @@ func (channel *Channel) HasMember(client *cl.Client) bool {
 	}
 	return false
 }
+
+// removes client from channel
+func (channel *Channel) RemoveClientFromChannel(client *cl.Client) {
+	delete(channel.Members, client.Conn)
+}

@@ -60,6 +60,8 @@ func (server *Server) ReadClientRequest() {
 			server.HandleJoinCommand(&request)
 		case "/send":
 			server.HandleSendFileCommand(&request)
+		case "/leave":
+			server.HandleLeaveCommand(&request)
 		default:
 			// fmt.Printf("%s %s\n", utils.CurrentTime(), notify.INVALID_REQUEST)
 			// response := &utils.Response{
@@ -125,6 +127,26 @@ func (server *Server) SetClientName(clientName string, client *net.Conn) {
 	if _, ok := server.Clients[*client]; ok {
 		server.Clients[*client].Name = clientName
 	}
+}
+
+// removes channel from client's array
+func (server *Server) RemoveChannelFromClient(client *cl.Client, channel string) {
+	channelsArray := server.Clients[client.Conn].Channels
+	var index = -1
+
+	for _, val := range channelsArray {
+		if val == channel {
+			break
+		}
+		index++
+	}
+
+	if len(channelsArray) <= 1 {
+		return
+	}
+
+	result := append(channelsArray[0:index], channelsArray[index+1:]...)
+	server.Clients[client.Conn].Channels = result
 }
 
 // -------------------------------- Channel functions -------------------------------- \\
