@@ -17,7 +17,8 @@ func main() {
 	}
 
 	server.Channels["dev"] = &ch.Channel{
-		Name: "dev",
+		Name:    "dev",
+		Members: make(map[net.Conn]*cl.Client),
 	}
 
 	// listen for commands from the client

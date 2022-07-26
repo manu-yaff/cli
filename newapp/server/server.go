@@ -3,8 +3,6 @@ package server
 import (
 	ch "client-server/channel"
 	cl "client-server/client"
-	er "client-server/constants/errors"
-	notify "client-server/constants/notifications"
 	req "client-server/request"
 	"client-server/utils"
 	"fmt"
@@ -24,10 +22,10 @@ type Server struct {
 func (server *Server) StartServer(port string) {
 	l, err := net.Listen("tcp", "localhost"+":"+port)
 	if err != nil {
-		fmt.Printf("%s %s: %s\n", utils.CurrentTime(), er.ERROR_SERVER_START, err.Error())
+		fmt.Printf("%s Error starting server: %s\n", utils.CurrentTime(), err.Error())
 		os.Exit(1)
 	}
-	fmt.Printf("%s %s\n", utils.CurrentTime(), notify.SERVER_LISTENING)
+	fmt.Printf("%s %s\n", utils.CurrentTime(), "Server listening at localhost:1234")
 	server.Listener = l
 }
 
@@ -36,10 +34,10 @@ func (server *Server) ListenForConnections() {
 	for {
 		conn, err := server.Listener.Accept()
 		if err != nil {
-			fmt.Printf(er.ERROR_ACCEPT_CONN + err.Error())
+			fmt.Printf("%s Error accepting connection %s\n", err.Error())
 			continue
 		}
-		fmt.Printf("%s %s %s\n", utils.CurrentTime(), notify.WELCOME, conn.RemoteAddr())
+		fmt.Printf("%s Welcome to the server %s\n", utils.CurrentTime(), conn.RemoteAddr())
 		go server.HandleClientConnection(&conn)
 	}
 }
@@ -58,10 +56,9 @@ func (server *Server) ReadClientRequest() {
 		case "/create":
 			// server.HandleCreateCommand(request)
 		case "/join":
-			// server.HandleJoinCommand(request)
+			server.HandleJoinCommand(&request)
 		case "/send":
 			server.HandleSendFileCommand(&request)
-			fmt.Println(server.Channels[request.Args[1]])
 		default:
 			// fmt.Printf("%s %s\n", utils.CurrentTime(), notify.INVALID_REQUEST)
 			// response := &utils.Response{
@@ -83,11 +80,11 @@ func (server *Server) HandleClientConnection(conn *net.Conn) {
 		err := utils.ReadRequest(conn, &clientInput)
 		if err != nil {
 			if err == io.EOF {
-				fmt.Printf("%s %s %s\n", utils.CurrentTime(), client.Conn.RemoteAddr(), notify.CLIENT_CONNECTION_CLOSED)
+				fmt.Printf("%s %s Client closed connection\n", utils.CurrentTime(), client.Conn.RemoteAddr())
 				(*conn).Close()
 				server.RemoveClient(conn)
 			} else {
-				fmt.Printf("%s %s %s\n", utils.CurrentTime(), er.ERROR_READING_REQUEST, err.Error())
+				fmt.Printf("%s Error reading request: %s\n", utils.CurrentTime(), err.Error())
 			}
 			break
 		}
@@ -126,4 +123,14 @@ func (server *Server) ChannelExists(channelName string) bool {
 		return true
 	}
 	return false
+}
+
+// adds a client to the specified channel, returns true if ok
+func (server *Server) AddToChannel(client *cl.Client, channel *ch.Channel) {
+	channel.Members[client.Conn] = client
+}
+
+// adds a channel to client
+func (server *Server) AddChannelToClient(client *cl.Client, channel *ch.Channel) {
+	client.Channels = append(client.Channels, channel.Name)
 }

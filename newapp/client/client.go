@@ -1,11 +1,11 @@
 package client
 
 import (
-	er "client-server/constants/errors"
-	notify "client-server/constants/notifications"
+	"bytes"
 	req "client-server/request"
 	res "client-server/response"
 	"client-server/utils"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -25,7 +25,7 @@ type Client struct {
 func ConnectToServer(address string, port string) net.Conn {
 	conn, err := net.Dial("tcp", address+":"+port)
 	if err != nil {
-		fmt.Printf("%s %s: %s\n", utils.CurrentTime(), er.ERROR_CONNECTING_SEVER, err.Error())
+		fmt.Printf("%s Error connecting to server: %ss\n", utils.CurrentTime(), err.Error())
 		os.Exit(1)
 	}
 	return conn
@@ -39,10 +39,35 @@ func ReadServer(conn *net.Conn) {
 
 		if err != nil {
 			if err == io.EOF {
-				fmt.Printf("%s %s\n", utils.CurrentTime(), notify.SERVER_CONNECTION_CLOSED)
+				fmt.Printf("%s %s\n", utils.CurrentTime(), "Server connection closed")
 				os.Exit(1)
 			}
 		}
+
+		// check is response has file
+		if serverResponse.File != nil {
+			// create dir
+			if _, err := os.Stat(serverResponse.ClientIp); errors.Is(err, os.ErrNotExist) {
+				err := os.Mkdir(serverResponse.ClientIp, os.ModePerm)
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+
+			// create file
+			file, err := os.Create(serverResponse.ClientIp + "/" + serverResponse.File.Filename)
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			// send bytes to file
+			filesBytes := bytes.NewReader(serverResponse.File.Content)
+			_, err = io.Copy(file, filesBytes)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+
 		fmt.Printf("> %s\n", serverResponse.Message)
 	}
 }

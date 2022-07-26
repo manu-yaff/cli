@@ -7,7 +7,7 @@ type FileResponse struct {
 
 type Response struct {
 	Message    string
-	File       FileResponse
+	File       *FileResponse
 	ClientName string
 	ClientIp   string
 }

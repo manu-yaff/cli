@@ -14,6 +14,7 @@ type Channel struct {
 	Files   map[string]*fi.File
 }
 
+// broadcast a response to all members in channel
 func (channel *Channel) Broadcast(response *res.Response, currentClient net.Conn) {
 	members := channel.Members
 	for _, member := range members {
@@ -23,4 +24,12 @@ func (channel *Channel) Broadcast(response *res.Response, currentClient net.Conn
 			utils.WriteResponse(&member.Conn, response)
 		}
 	}
+}
+
+// checks is client is member of the channel
+func (channel *Channel) HasMember(client *cl.Client) bool {
+	if _, ok := channel.Members[(*client).Conn]; ok {
+		return true
+	}
+	return false
 }

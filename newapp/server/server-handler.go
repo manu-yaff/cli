@@ -10,10 +10,59 @@ import (
 	"os"
 )
 
+// handles logic for the join command
+func (server *Server) HandleJoinCommand(request *req.Request) {
+	channelName := request.Args[0]
+	channel := server.Channels[channelName]
+	client := request.Client
+	// check channel exists
+	if server.ChannelExists(channelName) {
+		clientToAdd := server.Clients[client]
+
+		// check if client is already in channel
+		if channel.HasMember(clientToAdd) {
+			fmt.Printf("%s Client is already in channel\n", utils.CurrentTime())
+			utils.WriteResponse(&client,
+				&res.Response{
+					Message: fmt.Sprintf("You are already in '%s'", channelName),
+				},
+			)
+		} else {
+			// add client to channel
+			server.AddToChannel(clientToAdd, channel)
+
+			// add channel to client
+			server.AddChannelToClient(clientToAdd, channel)
+
+			// broadcast message for members
+			channel.Broadcast(&res.Response{
+				Message: fmt.Sprintf("%s joined %s", clientToAdd.Name, channelName),
+			}, client)
+
+			// print in server
+			fmt.Printf("%s Client joined '%s' channel\n", utils.CurrentTime(), channelName)
+
+			// response for sender
+			utils.WriteResponse(&client,
+				&res.Response{
+					Message: fmt.Sprintf("You joined '%s'", channelName),
+				},
+			)
+		}
+	} else {
+		utils.WriteResponse(&client,
+			&res.Response{
+				Message: fmt.Sprintf("%s Channel does not exist", channelName),
+			},
+		)
+	}
+}
+
+// handles logic for the send file command
 func (server *Server) HandleSendFileCommand(request *req.Request) {
 	filename := request.Args[0]
 	channel := request.Args[1]
-	content := request.Content
+	fileContent := request.Content
 	conn := request.Client
 
 	// check channel exists
@@ -33,7 +82,7 @@ func (server *Server) HandleSendFileCommand(request *req.Request) {
 			}
 		}
 		// save file in storage
-		err = utils.WriteFile(filename, content)
+		err = utils.WriteFile(filename, fileContent)
 		if err != nil {
 			fmt.Println("Error writting file")
 		} else {
@@ -49,11 +98,23 @@ func (server *Server) HandleSendFileCommand(request *req.Request) {
 			channelObj.Files = make(map[string]*fi.File)
 			channelObj.Files[filename] = newFile
 
+			// sender client
+			sender := server.Clients[conn]
+
 			// broadcast message
 			response := &res.Response{
-				Message: "You will receive a file",
+				Message: fmt.Sprintf("%s shared '%s' through '%s'", sender.Name, filename, channelObj.Name),
+				File: &res.FileResponse{
+					Filename: filename,
+					Content:  fileContent,
+				},
 			}
 			channelObj.Broadcast(response, conn)
+
+			// write message for the client that sent file
+			utils.WriteResponse(&conn, &res.Response{
+				Message: fmt.Sprintf("You shared '%s' through '%s'", filename, channelObj.Name),
+			})
 		}
 	}
 }
