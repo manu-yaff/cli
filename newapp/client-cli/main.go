@@ -11,11 +11,13 @@ import (
 
 func main() {
 	conn := cl.ConnectToServer("localhost", "1234")
-	go cl.ReadServer(&conn)
+	c := make(chan string)
+	go cl.ReadServer(&conn, c)
 	defer conn.Close()
 
 	for {
 		// read from console
+		fmt.Print("$ ")
 		reader := bufio.NewReader(os.Stdin)
 		clientInput, err := reader.ReadString('\n')
 		if err != nil {
@@ -27,5 +29,6 @@ func main() {
 
 		// handle input command
 		hd.HandleInputCommand(cmd, args, &conn)
+		<-c
 	}
 }

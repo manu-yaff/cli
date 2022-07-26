@@ -116,3 +116,21 @@ func TestJoinNonExistingChannel(t *testing.T) {
 	}
 
 }
+
+// test the client's name is changed
+func TestChangeNameExistingClient(t *testing.T) {
+	fmt.Println("Should change name of the client")
+
+	var payloadClient net.Conn
+
+	client := testServer.AddClient(&payloadClient)
+
+	// change name
+	expectedName := "jonh"
+	testServer.SetClientName(expectedName, &client.Conn)
+	actualName := testServer.Clients[client.Conn].Name
+
+	if actualName != expectedName {
+		t.Errorf("got %s, expected %s", actualName, expectedName)
+	}
+}

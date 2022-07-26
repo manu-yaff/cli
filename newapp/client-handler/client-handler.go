@@ -7,24 +7,21 @@ import (
 	"net"
 )
 
-//
+// handles the logic according to the input command
 func HandleInputCommand(cmd string, args []string, conn *net.Conn) {
 	switch cmd {
 	case "/send":
 		HandleSendCommand(cmd, args, conn)
+	case "/join":
+		HandleJoinCommand(cmd, args, conn)
+	case "/name":
+		HandleNameCommand(cmd, args, conn)
 	default:
-		request := &req.Request{
-			CommandName: cmd,
-			Args:        args,
-		}
-		err := utils.WriteRequest(conn, request)
-		if err != nil {
-			fmt.Printf("%s Error sending request \n", utils.CurrentTime())
-		}
+
 	}
 }
 
-//
+// checks the arguments are correct. Checks if file exists and reads it to send it in the request
 func HandleSendCommand(cmd string, args []string, conn *net.Conn) {
 	// check arguments are in the correct format
 	if len(args) != 2 {
@@ -58,5 +55,39 @@ func HandleSendCommand(cmd string, args []string, conn *net.Conn) {
 		if err != nil {
 			fmt.Printf("%s Error sending request: %s\n", utils.CurrentTime(), err.Error())
 		}
+	}
+}
+
+// checks the arguments are correct
+func HandleJoinCommand(cmd string, args []string, conn *net.Conn) {
+	if len(args) != 1 {
+		fmt.Printf("%s\n", "Usage: /join [channel]")
+		return
+	}
+	request := &req.Request{
+		CommandName: cmd,
+		Args:        args,
+	}
+
+	err := utils.WriteRequest(conn, request)
+	if err != nil {
+		fmt.Printf("%s Error sending request \n", utils.CurrentTime())
+	}
+}
+
+// checks the arguments are correct
+func HandleNameCommand(cmd string, args []string, conn *net.Conn) {
+	if len(args) != 1 {
+		fmt.Printf("%s \n", "Usage: /name [name]")
+		return
+	}
+	request := &req.Request{
+		CommandName: cmd,
+		Args:        args,
+	}
+
+	err := utils.WriteRequest(conn, request)
+	if err != nil {
+		fmt.Printf("%s Error sending request \n", utils.CurrentTime())
 	}
 }

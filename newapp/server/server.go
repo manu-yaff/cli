@@ -50,7 +50,7 @@ func (server *Server) ReadClientRequest() {
 
 		switch cmd {
 		case "/name":
-			// server.HandleNameCommand(request)
+			server.HandleNameCommand(&request)
 		case "/list":
 			// server.HandleListCommand(request)
 		case "/create":
@@ -133,4 +133,9 @@ func (server *Server) AddToChannel(client *cl.Client, channel *ch.Channel) {
 // adds a channel to client
 func (server *Server) AddChannelToClient(client *cl.Client, channel *ch.Channel) {
 	client.Channels = append(client.Channels, channel.Name)
+}
+
+// changes the name of a given client
+func (server *Server) SetClientName(clientName string, client *net.Conn) {
+	server.Clients[*client].Name = clientName
 }

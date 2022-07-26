@@ -52,7 +52,7 @@ func (server *Server) HandleJoinCommand(request *req.Request) {
 	} else {
 		utils.WriteResponse(&client,
 			&res.Response{
-				Message: fmt.Sprintf("%s Channel does not exist", channelName),
+				Message: fmt.Sprintf("%s channel does not exist", channelName),
 			},
 		)
 	}
@@ -115,6 +115,23 @@ func (server *Server) HandleSendFileCommand(request *req.Request) {
 			utils.WriteResponse(&conn, &res.Response{
 				Message: fmt.Sprintf("You shared '%s' through '%s'", filename, channelObj.Name),
 			})
+			fmt.Printf("%s Client shared a file\n", utils.CurrentTime())
 		}
 	}
+}
+
+// handles logic for name command
+func (server *Server) HandleNameCommand(request *req.Request) {
+	// change client name
+	clientName := request.Args[0]
+	conn := request.Client
+	server.Clients[conn].Name = clientName
+
+	// send response
+	utils.WriteResponse(&conn, &res.Response{
+		Message: fmt.Sprintf("You changed your name to '%s'", clientName),
+	})
+
+	// print in server
+	fmt.Printf("%s Client change their name\n", utils.CurrentTime())
 }
