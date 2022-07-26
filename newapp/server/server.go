@@ -52,7 +52,7 @@ func (server *Server) ReadClientRequest() {
 		case "/name":
 			server.HandleNameCommand(&request)
 		case "/list":
-			// server.HandleListCommand(request)
+			server.HandleListCommand(&request)
 		case "/create":
 			// server.HandleCreateCommand(request)
 		case "/join":
@@ -100,6 +100,8 @@ func (server *Server) HandleClientConnection(conn *net.Conn) {
 	}
 }
 
+// -------------------------------- Client functions -------------------------------- \\
+
 // adds a client to the server instance
 func (server *Server) AddClient(conn *net.Conn) *cl.Client {
 	newClient := &cl.Client{
@@ -116,6 +118,15 @@ func (server *Server) AddClient(conn *net.Conn) *cl.Client {
 func (server *Server) RemoveClient(conn *net.Conn) {
 	delete(server.Clients, *conn)
 }
+
+// changes the name of a given client
+func (server *Server) SetClientName(clientName string, client *net.Conn) {
+	if _, ok := server.Clients[*client]; ok {
+		server.Clients[*client].Name = clientName
+	}
+}
+
+// -------------------------------- Channel functions -------------------------------- \\
 
 // checks if channel exists
 func (server *Server) ChannelExists(channelName string) bool {
@@ -135,9 +146,11 @@ func (server *Server) AddChannelToClient(client *cl.Client, channel *ch.Channel)
 	client.Channels = append(client.Channels, channel.Name)
 }
 
-// changes the name of a given client
-func (server *Server) SetClientName(clientName string, client *net.Conn) {
-	if _, ok := server.Clients[*client]; ok {
-		server.Clients[*client].Name = clientName
+// returns the existing channels in the server
+func (server *Server) GetChannels() []string {
+	var channels []string
+	for _, channel := range server.Channels {
+		channels = append(channels, "- "+channel.Name)
 	}
+	return channels
 }

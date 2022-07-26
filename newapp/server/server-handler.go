@@ -7,6 +7,7 @@ import (
 	"client-server/utils"
 	"fmt"
 	"os"
+	"strings"
 )
 
 // handles logic for the join command
@@ -155,4 +156,16 @@ func (server *Server) HandleNameCommand(request *req.Request) {
 
 	// print in server
 	fmt.Printf("%s Client change their name\n", utils.CurrentTime())
+}
+
+// list all commands in the server
+func (server *Server) HandleListCommand(request *req.Request) {
+	conn := request.Client
+	channels := server.GetChannels()
+
+	fmt.Printf("%s Client listed channels\n", utils.CurrentTime())
+	formattedChannels := fmt.Sprintf("Channels\n%s", strings.Join(channels, "\n"))
+	utils.WriteResponse(&conn, &res.Response{
+		Message: formattedChannels,
+	})
 }

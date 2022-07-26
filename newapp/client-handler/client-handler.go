@@ -16,8 +16,10 @@ func HandleInputCommand(cmd string, args []string, conn *net.Conn) {
 		HandleJoinCommand(cmd, args, conn)
 	case "/name":
 		HandleNameCommand(cmd, args, conn)
+	case "/list":
+		HandleListChannels(cmd, args, conn)
 	default:
-
+		fmt.Println("Error: command not supported. Run /help to see the available commands")
 	}
 }
 
@@ -87,6 +89,18 @@ func HandleNameCommand(cmd string, args []string, conn *net.Conn) {
 	}
 
 	err := utils.WriteRequest(conn, request)
+	if err != nil {
+		fmt.Printf("%s Error sending request \n", utils.CurrentTime())
+	}
+}
+
+// sends the request since not arguments are required
+func HandleListChannels(cmd string, args []string, conn *net.Conn) {
+	err := utils.WriteRequest(conn, &req.Request{
+		CommandName: cmd,
+		Args:        args,
+	})
+
 	if err != nil {
 		fmt.Printf("%s Error sending request \n", utils.CurrentTime())
 	}

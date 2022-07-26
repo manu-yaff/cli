@@ -16,7 +16,18 @@ var testServer = &s.Server{
 	CurrentRequest: make(chan req.Request),
 }
 
-func clearMap(m map[net.Conn]*cl.Client) {
+func clearServer() {
+	clearClients(testServer.Clients)
+	clearChannels(testServer.Channels)
+}
+
+func clearClients(m map[net.Conn]*cl.Client) {
+	for k := range m {
+		delete(m, k)
+	}
+}
+
+func clearChannels(m map[string]*ch.Channel) {
 	for k := range m {
 		delete(m, k)
 	}
@@ -58,7 +69,7 @@ func TestAddClient(t *testing.T) {
 	if expectedClients != actualClients {
 		t.Errorf("got %d, expected %d", actualClients, expectedClients)
 	}
-	clearMap(testServer.Clients)
+	clearServer()
 }
 
 // test when a client joins a channel, then it is added to the channel, the added in the client
@@ -96,7 +107,7 @@ func TestJoinExistingChannel(t *testing.T) {
 	if actualChannels != expectedChannels {
 		t.Errorf("got %d, expected %d", actualChannels, expectedChannels)
 	}
-	clearMap(testServer.Clients)
+	clearServer()
 }
 
 // test when a client joins a channel, then it is added to the channel, the added in the client
@@ -121,7 +132,7 @@ func TestJoinNonExistingChannel(t *testing.T) {
 		t.Errorf("%s channel exists", payloadChannel.Name)
 	}
 
-	clearMap(testServer.Clients)
+	clearServer()
 }
 
 // test the client's name is changed
@@ -140,9 +151,10 @@ func TestChangeNameExistingClient(t *testing.T) {
 	if actualName != expectedName {
 		t.Errorf("got %s, expected %s", actualName, expectedName)
 	}
-	clearMap(testServer.Clients)
+	clearServer()
 }
 
+// test changing name to non extisting channel
 func TestChangeNameNonExistingClient(t *testing.T) {
 	fmt.Println("Should not add client")
 
@@ -160,4 +172,20 @@ func TestChangeNameNonExistingClient(t *testing.T) {
 	if len(testServer.Clients) != 0 {
 		t.Errorf("got %d, expected %d", len(testServer.Clients), 0)
 	}
+	clearServer()
+}
+
+// test getting channels
+func TestGetChannels(t *testing.T) {
+	fmt.Println("Should return 1 channel")
+	testServer.Channels["dev"] = &ch.Channel{
+		Name: "dev",
+	}
+	actualChannels := len(testServer.GetChannels())
+	expectedChannels := 1
+
+	if actualChannels != expectedChannels {
+		t.Errorf("got %d, expected %d", actualChannels, expectedChannels)
+	}
+	clearServer()
 }
