@@ -3,6 +3,7 @@ package main
 import (
 	ch "client-server/channel"
 	cl "client-server/client"
+	fi "client-server/file"
 	req "client-server/request"
 	s "client-server/server"
 	"net"
@@ -19,6 +20,7 @@ func main() {
 	server.Channels["dev"] = &ch.Channel{
 		Name:    "dev",
 		Members: make(map[net.Conn]*cl.Client),
+		Files:   make(map[string]*fi.File),
 	}
 
 	// listen for commands from the client

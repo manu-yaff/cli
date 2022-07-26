@@ -32,7 +32,7 @@ func ConnectToServer(address string, port string) net.Conn {
 }
 
 // reads requests from server
-func ReadServer(conn *net.Conn, c chan string) {
+func ReadServer(conn *net.Conn) {
 	for {
 		var serverResponse res.Response
 		err := utils.ReadResponse(conn, &serverResponse)
@@ -69,6 +69,6 @@ func ReadServer(conn *net.Conn, c chan string) {
 		}
 
 		fmt.Printf("> %s\n", serverResponse.Message)
-		c <- "@" + serverResponse.ClientName
+		// c <- "@" + serverResponse.ClientName
 	}
 }

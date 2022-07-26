@@ -6,7 +6,6 @@ import (
 	res "client-server/response"
 	"client-server/utils"
 	"fmt"
-	"log"
 	"os"
 )
 
@@ -61,63 +60,85 @@ func (server *Server) HandleJoinCommand(request *req.Request) {
 // handles logic for the send file command
 func (server *Server) HandleSendFileCommand(request *req.Request) {
 	filename := request.Args[0]
-	channel := request.Args[1]
+	channelName := request.Args[1]
 	fileContent := request.Content
 	conn := request.Client
+	channel := server.Channels[channelName]
 
 	// check channel exists
-	if !server.ChannelExists(channel) {
+	if !server.ChannelExists(channelName) {
 		response := &res.Response{
-			Message: fmt.Sprintf("'%s' channel does not exist", channel),
+			Message: fmt.Sprintf("'%s' channel does not exist", channelName),
 		}
 		fmt.Printf("%s Channel does not exist\n", utils.CurrentTime())
 		utils.WriteResponse(&conn, response)
-	} else {
-		// check if storage dir exists
-		_, err := os.Stat("server-storage")
-		if os.IsNotExist(err) {
-			// create dir
-			if err := os.Mkdir("server-storage", os.ModePerm); err != nil {
-				log.Fatal(err)
-			}
-		}
-		// save file in storage
-		err = utils.WriteFile(filename, fileContent)
-		if err != nil {
-			fmt.Println("Error writting file")
-		} else {
-			// check if that filename is in the channel
-			delete(server.Channels[channel].Files, filename)
+		return
+	}
 
-			// save file in channel
-			newFile := &fi.File{
-				Name: filename,
-				Size: 0,
-			}
-			channelObj := server.Channels[channel]
-			channelObj.Files = make(map[string]*fi.File)
-			channelObj.Files[filename] = newFile
+	// check client is part of the channel
+	if !server.Channels[channelName].HasMember(server.Clients[conn]) {
+		fmt.Printf("%s User is not member of channel\n", utils.CurrentTime())
+		utils.WriteResponse(&conn, &res.Response{
+			Message: fmt.Sprintf("You are not member in '%s'", channelName),
+		})
+		return
+	}
 
-			// sender client
-			sender := server.Clients[conn]
+	// if client is part of channel, proceed
 
-			// broadcast message
-			response := &res.Response{
-				Message: fmt.Sprintf("%s shared '%s' through '%s'", sender.Name, filename, channelObj.Name),
-				File: &res.FileResponse{
-					Filename: filename,
-					Content:  fileContent,
-				},
-			}
-			channelObj.Broadcast(response, conn)
-
-			// write message for the client that sent file
+	// check if storage dir exists
+	_, err := os.Stat("server-storage")
+	if os.IsNotExist(err) {
+		// create dir
+		if err := os.Mkdir("server-storage", os.ModePerm); err != nil {
+			fmt.Printf("%s Error creating folder for server storage", utils.CurrentTime())
 			utils.WriteResponse(&conn, &res.Response{
-				Message: fmt.Sprintf("You shared '%s' through '%s'", filename, channelObj.Name),
+				Message: "Server error",
 			})
-			fmt.Printf("%s Client shared a file\n", utils.CurrentTime())
+			return
 		}
 	}
+
+	// save file in storage
+	err = utils.WriteFile(filename, fileContent)
+	if err != nil {
+		fmt.Printf("%s Error writing file", utils.CurrentTime())
+		utils.WriteResponse(&conn, &res.Response{
+			Message: "Server error",
+		})
+		return
+
+	} else {
+		// check if that filename is in the channel
+		delete(channel.Files, filename)
+
+		// save file in channel
+		newFile := &fi.File{
+			Name: filename,
+			Size: 0,
+		}
+		channel.Files[filename] = newFile
+
+		// sender client
+		sender := server.Clients[conn]
+
+		// broadcast message
+		response := &res.Response{
+			Message: fmt.Sprintf("%s shared '%s' through '%s'", sender.Name, filename, channelName),
+			File: &res.FileResponse{
+				Filename: filename,
+				Content:  fileContent,
+			},
+		}
+		channel.Broadcast(response, conn)
+
+		// write message for the client that sent file
+		utils.WriteResponse(&conn, &res.Response{
+			Message: fmt.Sprintf("You shared '%s' through '%s'", filename, channelName),
+		})
+		fmt.Printf("%s Client shared a file\n", utils.CurrentTime())
+	}
+
 }
 
 // handles logic for name command

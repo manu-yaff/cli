@@ -137,5 +137,7 @@ func (server *Server) AddChannelToClient(client *cl.Client, channel *ch.Channel)
 
 // changes the name of a given client
 func (server *Server) SetClientName(clientName string, client *net.Conn) {
-	server.Clients[*client].Name = clientName
+	if _, ok := server.Clients[*client]; ok {
+		server.Clients[*client].Name = clientName
+	}
 }

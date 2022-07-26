@@ -16,10 +16,15 @@ var testServer = &s.Server{
 	CurrentRequest: make(chan req.Request),
 }
 
-var conn net.Conn
+func clearMap(m map[net.Conn]*cl.Client) {
+	for k := range m {
+		delete(m, k)
+	}
+}
 
 // test client is added to the server
 func TestAddClient(t *testing.T) {
+	var conn net.Conn
 	expected := &cl.Client{
 		Conn:     conn,
 		Name:     "Anonymus",
@@ -53,6 +58,7 @@ func TestAddClient(t *testing.T) {
 	if expectedClients != actualClients {
 		t.Errorf("got %d, expected %d", actualClients, expectedClients)
 	}
+	clearMap(testServer.Clients)
 }
 
 // test when a client joins a channel, then it is added to the channel, the added in the client
@@ -90,7 +96,7 @@ func TestJoinExistingChannel(t *testing.T) {
 	if actualChannels != expectedChannels {
 		t.Errorf("got %d, expected %d", actualChannels, expectedChannels)
 	}
-
+	clearMap(testServer.Clients)
 }
 
 // test when a client joins a channel, then it is added to the channel, the added in the client
@@ -115,6 +121,7 @@ func TestJoinNonExistingChannel(t *testing.T) {
 		t.Errorf("%s channel exists", payloadChannel.Name)
 	}
 
+	clearMap(testServer.Clients)
 }
 
 // test the client's name is changed
@@ -132,5 +139,25 @@ func TestChangeNameExistingClient(t *testing.T) {
 
 	if actualName != expectedName {
 		t.Errorf("got %s, expected %s", actualName, expectedName)
+	}
+	clearMap(testServer.Clients)
+}
+
+func TestChangeNameNonExistingClient(t *testing.T) {
+	fmt.Println("Should not add client")
+
+	// payload
+	conn, _ := net.Dial("tcp", "golang.org:80")
+	client := cl.Client{
+		Conn: conn,
+		Name: "test",
+	}
+
+	// call function
+	testServer.SetClientName("rick", &client.Conn)
+
+	// check that channel doesnt exist
+	if len(testServer.Clients) != 0 {
+		t.Errorf("got %d, expected %d", len(testServer.Clients), 0)
 	}
 }
