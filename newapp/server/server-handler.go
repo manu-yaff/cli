@@ -169,3 +169,31 @@ func (server *Server) HandleListCommand(request *req.Request) {
 		Message: formattedChannels,
 	})
 }
+
+// creates a new channel
+func (server *Server) HandleCreateCommand(request *req.Request) {
+	channelName := request.Args[0]
+	conn := request.Client
+
+	// check if channel exists
+	if server.ChannelExists(channelName) {
+		utils.WriteResponse(&conn, &res.Response{
+			Message: fmt.Sprintf("'%s' already exists", channelName),
+		})
+		fmt.Printf("%s Client tried to create channel that already exists\n", utils.CurrentTime())
+		return
+	}
+
+	// client does not exist, then create it
+	if server.CreateChannel(channelName) {
+		utils.WriteResponse(&conn, &res.Response{
+			Message: fmt.Sprintf("'%s' channel created", channelName),
+		})
+		fmt.Printf("%s Client created channel\n", utils.CurrentTime())
+	} else {
+		utils.WriteResponse(&conn, &res.Response{
+			Message: fmt.Sprintf("Error creating '%s' channel", channelName),
+		})
+		fmt.Printf("%s Error creating '%s' channel \n", utils.CurrentTime(), channelName)
+	}
+}

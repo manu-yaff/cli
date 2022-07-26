@@ -3,6 +3,7 @@ package server
 import (
 	ch "client-server/channel"
 	cl "client-server/client"
+	fi "client-server/file"
 	req "client-server/request"
 	"client-server/utils"
 	"fmt"
@@ -54,7 +55,7 @@ func (server *Server) ReadClientRequest() {
 		case "/list":
 			server.HandleListCommand(&request)
 		case "/create":
-			// server.HandleCreateCommand(request)
+			server.HandleCreateCommand(&request)
 		case "/join":
 			server.HandleJoinCommand(&request)
 		case "/send":
@@ -153,4 +154,20 @@ func (server *Server) GetChannels() []string {
 		channels = append(channels, "- "+channel.Name)
 	}
 	return channels
+}
+
+// creates channel only when the channel does not exist already
+func (server *Server) CreateChannel(channelName string) bool {
+	if server.ChannelExists(channelName) {
+		return false
+	}
+
+	newChannel := &ch.Channel{
+		Name:    channelName,
+		Members: make(map[net.Conn]*cl.Client),
+		Files:   make(map[string]*fi.File),
+	}
+
+	server.Channels[channelName] = newChannel
+	return true
 }

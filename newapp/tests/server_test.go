@@ -189,3 +189,20 @@ func TestGetChannels(t *testing.T) {
 	}
 	clearServer()
 }
+
+// test creating channel
+func TestCreateChannel(t *testing.T) {
+	fmt.Println("Should create a channel")
+	channel := &ch.Channel{
+		Name: "frontend",
+	}
+	testServer.CreateChannel(channel.Name)
+
+	actualChannels := len(testServer.GetChannels())
+	expectedChannels := 1
+
+	if actualChannels != expectedChannels {
+		t.Errorf("got %d, expected %d", actualChannels, expectedChannels)
+	}
+	clearServer()
+}

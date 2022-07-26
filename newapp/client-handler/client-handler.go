@@ -18,6 +18,8 @@ func HandleInputCommand(cmd string, args []string, conn *net.Conn) {
 		HandleNameCommand(cmd, args, conn)
 	case "/list":
 		HandleListChannels(cmd, args, conn)
+	case "/create":
+		HandleCreateCommand(cmd, args, conn)
 	default:
 		fmt.Println("Error: command not supported. Run /help to see the available commands")
 	}
@@ -60,7 +62,7 @@ func HandleSendCommand(cmd string, args []string, conn *net.Conn) {
 	}
 }
 
-// checks the arguments are correct
+// checks the arguments are correct for the join command
 func HandleJoinCommand(cmd string, args []string, conn *net.Conn) {
 	if len(args) != 1 {
 		fmt.Printf("%s\n", "Usage: /join [channel]")
@@ -77,7 +79,7 @@ func HandleJoinCommand(cmd string, args []string, conn *net.Conn) {
 	}
 }
 
-// checks the arguments are correct
+// checks the arguments are correct for the name command
 func HandleNameCommand(cmd string, args []string, conn *net.Conn) {
 	if len(args) != 1 {
 		fmt.Printf("%s \n", "Usage: /name [name]")
@@ -94,8 +96,25 @@ func HandleNameCommand(cmd string, args []string, conn *net.Conn) {
 	}
 }
 
-// sends the request since not arguments are required
+// sends the request since not arguments are required in list command
 func HandleListChannels(cmd string, args []string, conn *net.Conn) {
+	err := utils.WriteRequest(conn, &req.Request{
+		CommandName: cmd,
+		Args:        args,
+	})
+
+	if err != nil {
+		fmt.Printf("%s Error sending request \n", utils.CurrentTime())
+	}
+}
+
+// checks arguments are correct for the create command
+func HandleCreateCommand(cmd string, args []string, conn *net.Conn) {
+	if len(args) != 1 {
+		fmt.Printf("%s \n", "Usage: /create [channel]")
+		return
+	}
+
 	err := utils.WriteRequest(conn, &req.Request{
 		CommandName: cmd,
 		Args:        args,
