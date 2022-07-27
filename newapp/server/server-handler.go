@@ -164,10 +164,16 @@ func (server *Server) HandleListCommand(request *req.Request) {
 	channels := server.GetChannels()
 
 	fmt.Printf("%s Client listed channels\n", utils.CurrentTime())
-	formattedChannels := fmt.Sprintf("Channels\n%s", strings.Join(channels, "\n"))
-	utils.WriteResponse(&conn, &res.Response{
-		Message: formattedChannels,
-	})
+	if len(channels) == 0 {
+		utils.WriteResponse(&conn, &res.Response{
+			Message: "There are no channels. You can create one with /create [channel]",
+		})
+	} else {
+		formattedChannels := fmt.Sprintf("Channels\n%s", strings.Join(channels, "\n"))
+		utils.WriteResponse(&conn, &res.Response{
+			Message: formattedChannels,
+		})
+	}
 }
 
 // handles logic to create a command

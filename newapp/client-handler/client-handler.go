@@ -4,6 +4,7 @@ import (
 	req "client-server/request"
 	"client-server/utils"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os/exec"
 )
@@ -25,6 +26,8 @@ func HandleInputCommand(cmd string, args []string, conn *net.Conn) {
 		HandleLeaveCommand(cmd, args, conn)
 	case "/open":
 		HadnleOpenCommand(cmd, args, conn)
+	case "/files":
+		HandleFilesCommand(cmd, args, conn)
 
 	default:
 		fmt.Println("Error: command not supported. Run /help to see the available commands")
@@ -162,4 +165,19 @@ func HadnleOpenCommand(cmd string, args []string, conn *net.Conn) {
 			fmt.Printf("Error opening file: %s\n", err)
 		}
 	}()
+}
+
+// list the files in the current dir
+func HandleFilesCommand(cmd string, args []string, conn *net.Conn) {
+	files, err := ioutil.ReadDir("./")
+	if err != nil {
+		fmt.Printf("Error reading dir: %s\n", err)
+		return
+	}
+	for _, file := range files {
+		if !file.IsDir() {
+			fmt.Println("-", file.Name())
+		}
+	}
+
 }
