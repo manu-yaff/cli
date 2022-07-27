@@ -65,6 +65,8 @@ func (server *Server) HandleSendFileCommand(request *req.Request) {
 	fileContent := request.Content
 	conn := request.Client
 	channel := server.Channels[channelName]
+	fmt.Println("this is the channel")
+	fmt.Println(server.Channels)
 
 	// check channel exists
 	if !server.ChannelExists(channelName) {
@@ -78,7 +80,8 @@ func (server *Server) HandleSendFileCommand(request *req.Request) {
 
 	// check client is part of the channel
 	if !server.Channels[channelName].HasMember(server.Clients[conn]) {
-		fmt.Printf("%s User is not member of channel\n", utils.CurrentTime())
+		// fmt.Println(server.Channels[channelName])
+		fmt.Printf("%s Client is not member of channel\n", utils.CurrentTime())
 		utils.WriteResponse(&conn, &res.Response{
 			Message: fmt.Sprintf("You are not member in '%s'", channelName),
 		})

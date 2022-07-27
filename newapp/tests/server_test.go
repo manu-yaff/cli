@@ -207,7 +207,7 @@ func TestCreateChannel(t *testing.T) {
 	clearServer()
 }
 
-// test leaveing a channel
+// test leaving a channel
 func TestLeaveChannel(t *testing.T) {
 	fmt.Println("Should leave a channel")
 	channel := &ch.Channel{
@@ -237,4 +237,53 @@ func TestLeaveChannel(t *testing.T) {
 	if len(client.Channels) != 0 {
 		t.Errorf("got %d, expected %d", len(client.Channels), 0)
 	}
+	clearServer()
+}
+
+// test sending file
+func TestSendFile(t *testing.T) {
+	fmt.Println("Should send a file")
+	channel := &ch.Channel{
+		Name:    "frontend",
+		Members: make(map[net.Conn]*cl.Client),
+	}
+
+	conn, _ := net.Dial("tcp", "golang.org:80")
+	client := &cl.Client{
+		Conn: conn,
+		Name: "charles",
+	}
+
+	conn2, _ := net.Dial("tcp", "golang.org:80")
+	client2 := &cl.Client{
+		Conn: conn2,
+		Name: "laura",
+	}
+
+	testServer.CreateChannel(channel.Name)
+
+	testServer.AddClient(&client.Conn)
+	testServer.AddToChannel(client, channel)
+	testServer.AddChannelToClient(client, channel)
+
+	testServer.AddClient(&client2.Conn)
+	testServer.AddToChannel(client2, channel)
+	testServer.AddChannelToClient(client2, channel)
+	// fmt.Println(testServer.Channels)
+
+	// fmt.Println(channel)
+	// for _, member := range channel.Members {
+	// 	fmt.Println(member)
+	// }
+
+	// args := ["test.txt", "frontend"]
+	testServer.HandleSendFileCommand(&req.Request{
+		CommandName: "/send",
+		Args:        []string{"test.txt", "frontend"},
+		Client:      client2.Conn,
+		Content:     []byte("this is a test content that should be sent\nSend file\n"),
+	})
+	fmt.Println(testServer.Channels["frontend"])
+	clearServer()
+
 }

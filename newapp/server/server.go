@@ -119,6 +119,7 @@ func (server *Server) AddClient(conn *net.Conn) *cl.Client {
 
 // removes a client from a server instance
 func (server *Server) RemoveClient(conn *net.Conn) {
+	//
 	delete(server.Clients, *conn)
 }
 
