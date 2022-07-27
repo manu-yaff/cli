@@ -27,7 +27,9 @@ func HandleInputCommand(cmd string, args []string, conn *net.Conn) {
 	case "/open":
 		HadnleOpenCommand(cmd, args, conn)
 	case "/files":
-		HandleFilesCommand(cmd, args, conn)
+		HandleFilesCommand()
+	case "/help":
+		HandleHelpCommand()
 
 	default:
 		fmt.Println("Error: command not supported. Run /help to see the available commands")
@@ -168,7 +170,7 @@ func HadnleOpenCommand(cmd string, args []string, conn *net.Conn) {
 }
 
 // list the files in the current dir
-func HandleFilesCommand(cmd string, args []string, conn *net.Conn) {
+func HandleFilesCommand() {
 	files, err := ioutil.ReadDir("./")
 	if err != nil {
 		fmt.Printf("Error reading dir: %s\n", err)
@@ -179,5 +181,19 @@ func HandleFilesCommand(cmd string, args []string, conn *net.Conn) {
 			fmt.Println("-", file.Name())
 		}
 	}
+}
 
+// displays information about the supported commands
+func HandleHelpCommand() {
+	fmt.Println(" name [name] -> sets the name of your user, by default is Anonymus")
+	fmt.Println(" /create [channel] -> creates a channel")
+	fmt.Println(" /join [channel] -> joins a channel")
+	fmt.Println(" /create [channel] -> creates a channel")
+	fmt.Println(" /list -> displays all the channels available")
+	fmt.Println(" /leave [channel] -> leaves a channel. Stops receiving information from there")
+	fmt.Println(" /create [channel] -> creates a channel")
+	fmt.Println(" /create [channel] -> creates a channel")
+	fmt.Println(" /send [file] [channel] -> sends file through channel")
+	fmt.Println(" /files -> list all files in the current user's directory")
+	fmt.Println(" /open [file] -> opens file")
 }
