@@ -5,6 +5,7 @@ import (
 	"client-server/utils"
 	"fmt"
 	"net"
+	"os/exec"
 )
 
 // handles the logic according to the input command
@@ -22,6 +23,9 @@ func HandleInputCommand(cmd string, args []string, conn *net.Conn) {
 		HandleCreateCommand(cmd, args, conn)
 	case "/leave":
 		HandleLeaveCommand(cmd, args, conn)
+	case "/open":
+		HadnleOpenCommand(cmd, args, conn)
+
 	default:
 		fmt.Println("Error: command not supported. Run /help to see the available commands")
 	}
@@ -142,4 +146,20 @@ func HandleLeaveCommand(cmd string, args []string, conn *net.Conn) {
 	if err != nil {
 		fmt.Printf("%s Error sending request \n", utils.CurrentTime())
 	}
+}
+
+// opens the given file
+func HadnleOpenCommand(cmd string, args []string, conn *net.Conn) {
+	if len(args) != 1 {
+		fmt.Printf("%s \n", "Usage: /leave [channel]")
+		return
+	}
+	file := args[0]
+	go func() {
+		cmd := exec.Command("open", file)
+		err := cmd.Run()
+		if err != nil {
+			fmt.Printf("Error opening file: %s\n", err)
+		}
+	}()
 }
