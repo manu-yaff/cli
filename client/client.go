@@ -5,7 +5,6 @@ import (
 	req "client-server/request"
 	res "client-server/response"
 	"client-server/utils"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -47,15 +46,15 @@ func ReadServer(conn *net.Conn) {
 		// check is response has file
 		if serverResponse.File != nil {
 			// create dir
-			if _, err := os.Stat(serverResponse.ClientIp); errors.Is(err, os.ErrNotExist) {
-				err := os.Mkdir(serverResponse.ClientIp, os.ModePerm)
-				if err != nil {
-					fmt.Println(err)
-				}
-			}
+			// if _, err := os.Stat(serverResponse.ClientIp); errors.Is(err, os.ErrNotExist) {
+			// 	err := os.Mkdir(serverResponse.ClientIp, os.ModePerm)
+			// 	if err != nil {
+			// 		fmt.Println(err)
+			// 	}
+			// }
 
 			// create file
-			file, err := os.Create(serverResponse.ClientIp + "/" + serverResponse.File.Filename)
+			file, err := os.Create(serverResponse.File.Filename)
 			if err != nil {
 				fmt.Println(err)
 			}
