@@ -177,7 +177,7 @@ func HandleFilesCommand() {
 		return
 	}
 	for _, file := range files {
-		if !file.IsDir() && file.Name() != ".DS_Store" {
+		if !file.IsDir() && file.Name() != ".DS_Store" && file.Name() != "main.go" {
 			fmt.Println("-", file.Name())
 		}
 	}
