@@ -177,7 +177,7 @@ func HandleFilesCommand() {
 		return
 	}
 	for _, file := range files {
-		if !file.IsDir() {
+		if !file.IsDir() && file.Name() != ".DS_Store" {
 			fmt.Println("-", file.Name())
 		}
 	}
@@ -185,13 +185,11 @@ func HandleFilesCommand() {
 
 // displays information about the supported commands
 func HandleHelpCommand() {
-	fmt.Println(" name [name] -> sets the name of your user, by default is Anonymus")
+	fmt.Println(" /name [name] -> sets the name of your user, by default is Anonymus")
 	fmt.Println(" /create [channel] -> creates a channel")
 	fmt.Println(" /join [channel] -> joins a channel")
-	fmt.Println(" /create [channel] -> creates a channel")
 	fmt.Println(" /list -> displays all the channels available")
 	fmt.Println(" /leave [channel] -> leaves a channel. Stops receiving information from there")
-	fmt.Println(" /create [channel] -> creates a channel")
 	fmt.Println(" /create [channel] -> creates a channel")
 	fmt.Println(" /send [file] [channel] -> sends file through channel")
 	fmt.Println(" /files -> list all files in the current user's directory")

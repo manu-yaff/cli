@@ -1,3 +1,0 @@
-hello
-this is a file that will be used for testing
-lets see if we can read it and share it

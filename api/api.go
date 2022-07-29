@@ -1,11 +1,11 @@
 package api
 
 import (
+	fi "client-server/file"
+	s "client-server/server"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	f "tcp-server/file"
-	s "tcp-server/server"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,10 +17,26 @@ type ClientsResponse struct {
 	Channels []string
 }
 
+type ChannelFiles struct {
+	Channel     string
+	NumberFiles int
+	Files       map[string]*fi.File
+}
+
 type FilesResponse struct {
-	TotalFiles int
-	TotalData  int64
-	Files      []f.File
+	TotalFiles     int
+	TotalData      int64
+	FilesByChannel []ChannelFiles
+}
+
+// define endpoints routes for the http server
+func SetupRoutes(router *gin.Engine, server *s.Server) {
+	router.GET("/clients", func(ctx *gin.Context) {
+		GetClients(ctx, server)
+	})
+	router.GET("/files", func(ctx *gin.Context) {
+		GetFiles(ctx, server)
+	})
 }
 
 // retrieves all the clients currently connected to the tcp server
@@ -41,7 +57,8 @@ func GetClients(c *gin.Context, serverInstance *s.Server) {
 
 // retrieves all the files send to the tcp server, the number of files and total data
 func GetFiles(c *gin.Context, serverInstance *s.Server) {
-	var files []f.File
+	var channelFilesArray []ChannelFiles
+
 	var totalSize int64 = 0
 	totalFiles := 0
 
@@ -57,30 +74,19 @@ func GetFiles(c *gin.Context, serverInstance *s.Server) {
 		}
 	}
 
-	for _, file := range serverInstance.Files {
-		item := &f.File{
-			Name:     file.Name,
-			Size:     file.Size,
-			Channels: file.Channels,
+	// files by channel
+	channels := serverInstance.Channels
+	for _, channel := range channels {
+		item := &ChannelFiles{
+			Channel:     channel.Name,
+			NumberFiles: len(channel.Files),
+			Files:       channel.Files,
 		}
-		files = append(files, *item)
+		channelFilesArray = append(channelFilesArray, *item)
 	}
-
-	response := &FilesResponse{
-		TotalFiles: totalFiles,
-		TotalData:  totalSize,
-		Files:      files,
-	}
-
-	c.JSON(http.StatusOK, response)
-}
-
-// define endpoints routes for the http server
-func SetupRoutes(router *gin.Engine, server *s.Server) {
-	router.GET("/clients", func(ctx *gin.Context) {
-		GetClients(ctx, server)
-	})
-	router.GET("/files", func(ctx *gin.Context) {
-		GetFiles(ctx, server)
+	c.JSON(http.StatusOK, FilesResponse{
+		TotalFiles:     totalFiles,
+		TotalData:      totalSize,
+		FilesByChannel: channelFilesArray,
 	})
 }

@@ -1,32 +1,15 @@
 package utils
 
 import (
+	req "client-server/request"
+	res "client-server/response"
 	"encoding/gob"
-	"fmt"
+	"errors"
 	"net"
 	"os"
 	"strings"
 	"time"
 )
-
-type Request struct {
-	CommandName string
-	Args        []string
-	Content     []byte
-	Client      net.Conn
-}
-
-type FileResponse struct {
-	Filename string
-	Content  []byte
-}
-
-type Response struct {
-	Message    string
-	File       FileResponse
-	ClientName string
-	ClientIp   string
-}
 
 // returns the current date in the format: yyyy/mm/dd hh:mm:ss
 func CurrentTime() string {
@@ -44,34 +27,64 @@ func FormatUserInput(userInput string) (string, []string) {
 	return cmd, args
 }
 
-// wirtes message to the given conn
-func WriteToConn(conn net.Conn, response *Response) {
-	err := gob.NewEncoder(conn).Encode(response)
+// writes the request to the given conn. Returns error if present
+func WriteRequest(conn *net.Conn, request *req.Request) error {
+	err := gob.NewEncoder(*conn).Encode(request)
 	if err != nil {
-		fmt.Println("Error sending response: ", err)
+		return err
 	}
+	return nil
 }
 
-// checks that the arguments commands are the required
-func CheckArgs(expectedArgs int, actualArgs []string) bool {
-	if len(actualArgs) < expectedArgs {
+// reads the request from the given conn. Returns error if present
+func ReadRequest(conn *net.Conn, dest *req.Request) error {
+	err := gob.NewDecoder(*conn).Decode(&dest)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// writes the response to the given conn. Returns error if present
+func WriteResponse(conn *net.Conn, response *res.Response) error {
+	err := gob.NewEncoder(*conn).Encode(response)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// reads the response from the given conn. Returns error if present
+func ReadResponse(conn *net.Conn, dest *res.Response) error {
+	err := gob.NewDecoder(*conn).Decode(&dest)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// checks if file exists, returns false if not
+func FileExists(filename string) bool {
+	if _, err := os.Stat(filename); errors.Is(err, os.ErrNotExist) {
 		return false
-	} else {
-		return true
 	}
+	return true
 }
 
-// reads file and returns its content and extension
-func ReadFile(fileName string) []byte {
+// reads file and returns its content
+func ReadFile(fileName string) ([]byte, error) {
 	content, err := os.ReadFile(fileName)
 	if err != nil {
-		fmt.Println(err)
+		return []byte{}, err
 	}
-	return content
+	return content, nil
 }
 
-// gets the extension file
-func GetFileExtension(fileName string) string {
-	fileExtension := strings.Split(fileName, ".")[1]
-	return "." + fileExtension
+// writes a file
+func WriteFile(filepath string, content []byte) error {
+	err := os.WriteFile("server-storage/"+filepath, content, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
 }

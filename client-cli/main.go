@@ -28,6 +28,5 @@ func main() {
 
 		// handle input command
 		hd.HandleInputCommand(cmd, args, &conn)
-		// <-c
 	}
 }
