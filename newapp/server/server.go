@@ -35,7 +35,7 @@ func (server *Server) ListenForConnections() {
 	for {
 		conn, err := server.Listener.Accept()
 		if err != nil {
-			fmt.Printf("%s Error accepting connection %s\n", err.Error())
+			fmt.Printf("Error accepting connection: %s\n", err.Error())
 			continue
 		}
 		fmt.Printf("%s Welcome to the server %s\n", utils.CurrentTime(), conn.RemoteAddr())
@@ -119,7 +119,6 @@ func (server *Server) AddClient(conn *net.Conn) *cl.Client {
 
 // removes a client from a server instance
 func (server *Server) RemoveClient(conn *net.Conn) {
-	//
 	delete(server.Clients, *conn)
 }
 
@@ -136,13 +135,14 @@ func (server *Server) RemoveChannelFromClient(client *cl.Client, channel string)
 	var index = -1
 
 	for _, val := range channelsArray {
+		index++
 		if val == channel {
 			break
 		}
-		index++
 	}
 
 	if len(channelsArray) <= 1 {
+		server.Clients[client.Conn].Channels = make([]string, 0)
 		return
 	}
 

@@ -65,8 +65,6 @@ func (server *Server) HandleSendFileCommand(request *req.Request) {
 	fileContent := request.Content
 	conn := request.Client
 	channel := server.Channels[channelName]
-	fmt.Println("this is the channel")
-	fmt.Println(server.Channels)
 
 	// check channel exists
 	if !server.ChannelExists(channelName) {
@@ -119,7 +117,7 @@ func (server *Server) HandleSendFileCommand(request *req.Request) {
 		// save file in channel
 		newFile := &fi.File{
 			Name: filename,
-			Size: 0,
+			Size: len(request.Content),
 		}
 		channel.Files[filename] = newFile
 
