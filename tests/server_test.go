@@ -1,98 +1,289 @@
 package main
 
 import (
+	ch "client-server/channel"
+	cl "client-server/client"
+	req "client-server/request"
+	s "client-server/server"
+	"fmt"
 	"net"
-	"strings"
-	"tcp-server/channel"
-	c "tcp-server/client"
-	s "tcp-server/server"
 	"testing"
 )
 
-var server = &s.Server{
-	Clients:  make(map[net.Conn]*c.Client),
-	Channels: make(map[string]*channel.Channel),
+var testServer = &s.Server{
+	Clients:        make(map[net.Conn]*cl.Client),
+	Channels:       make(map[string]*ch.Channel),
+	CurrentRequest: make(chan req.Request),
 }
 
-var conn net.Conn
-
-func initServer() {
-	server.StartServer("2222")
-	server.ListenForConnections()
+func clearServer() {
+	clearClients(testServer.Clients)
+	clearChannels(testServer.Channels)
 }
 
-func TestStartServer(t *testing.T) {
-	go initServer()
-	c.ConnectToServer("localhost", "2222")
-}
-
-func TestAddClientToLobby(t *testing.T) {
-	newClient := server.AddClientToLoby(&conn)
-
-	if newClient.Name != "Anonymus" {
-		t.Errorf("%s is different than %s", newClient.Name, "Anonymus")
-	}
-
-	if newClient.Conn != conn {
-		t.Errorf("%s is different than %s", newClient.Conn, conn)
-	}
-
-	if len(server.Clients) != 1 {
-		t.Errorf("%d is different than %d", len(server.Clients), 1)
+func clearClients(m map[net.Conn]*cl.Client) {
+	for k := range m {
+		delete(m, k)
 	}
 }
 
-func TestSetClientName(t *testing.T) {
-	server.AddClientToLoby(&conn)
-	server.SetClientName("Jon", conn)
-	if server.Clients[conn].Name != "Jon" {
-		t.Errorf("%s is different than %s", "Jon", server.Clients[conn].Name)
+func clearChannels(m map[string]*ch.Channel) {
+	for k := range m {
+		delete(m, k)
 	}
 }
 
+// test client is added to the server
+func TestAddClient(t *testing.T) {
+	var conn net.Conn
+	expected := &cl.Client{
+		Conn:     conn,
+		Name:     "Anonymus",
+		Channels: []string{},
+	}
+	tt := []struct {
+		test    string
+		payload net.Conn
+		want    *cl.Client
+	}{
+		{
+			"Adding a new client to the server",
+			conn,
+			expected,
+		},
+	}
+
+	for _, tc := range tt {
+		actualResult := testServer.AddClient(&tc.payload)
+		if actualResult.Name != tc.want.Name {
+			t.Errorf("got %s, expected %s", actualResult.Name, tc.want.Name)
+		}
+		if actualResult.Conn != tc.want.Conn {
+			t.Errorf("got %s, expected %s", actualResult.Conn, tc.want.Conn)
+		}
+	}
+
+	expectedClients := 1
+	actualClients := len(testServer.Clients)
+
+	if expectedClients != actualClients {
+		t.Errorf("got %d, expected %d", actualClients, expectedClients)
+	}
+	clearServer()
+}
+
+// test when a client joins a channel, then it is added to the channel, the added in the client
+func TestJoinExistingChannel(t *testing.T) {
+	fmt.Println("Should add client to channel")
+
+	// payload
+	var conn net.Conn
+
+	payloadChannel := &ch.Channel{
+		Name:    "dev",
+		Members: make(map[net.Conn]*cl.Client),
+	}
+
+	client := testServer.AddClient(&conn)
+
+	testServer.Channels[payloadChannel.Name] = payloadChannel
+
+	// call function
+	testServer.AddToChannel(client, payloadChannel)
+	testServer.AddChannelToClient(client, payloadChannel)
+
+	// actual result
+	actualMembers := len(testServer.Channels[payloadChannel.Name].Members)
+	actualChannels := len(testServer.Clients[client.Conn].Channels)
+
+	// expected result
+	expectedMembers := 1
+	expectedChannels := 1
+
+	if actualMembers != expectedMembers {
+		t.Errorf("got %d, expected %d", actualMembers, expectedMembers)
+	}
+
+	if actualChannels != expectedChannels {
+		t.Errorf("got %d, expected %d", actualChannels, expectedChannels)
+	}
+	clearServer()
+}
+
+// test when a client joins a channel, then it is added to the channel, the added in the client
+func TestJoinNonExistingChannel(t *testing.T) {
+	fmt.Println("Should not add client")
+
+	// payload
+	var conn net.Conn
+
+	payloadChannel := &ch.Channel{
+		Name:    "frontend",
+		Members: make(map[net.Conn]*cl.Client),
+	}
+
+	client := testServer.AddClient(&conn)
+
+	// call function
+	testServer.AddToChannel(client, payloadChannel)
+
+	// check that channel doesnt exist
+	if _, ok := testServer.Channels[payloadChannel.Name]; ok {
+		t.Errorf("%s channel exists", payloadChannel.Name)
+	}
+
+	clearServer()
+}
+
+// test the client's name is changed
+func TestChangeNameExistingClient(t *testing.T) {
+	fmt.Println("Should change name of the client")
+
+	var payloadClient net.Conn
+
+	client := testServer.AddClient(&payloadClient)
+
+	// change name
+	expectedName := "jonh"
+	testServer.SetClientName(expectedName, &client.Conn)
+	actualName := testServer.Clients[client.Conn].Name
+
+	if actualName != expectedName {
+		t.Errorf("got %s, expected %s", actualName, expectedName)
+	}
+	clearServer()
+}
+
+// test changing name to non extisting channel
+func TestChangeNameNonExistingClient(t *testing.T) {
+	fmt.Println("Should not add client")
+
+	// payload
+	conn, _ := net.Dial("tcp", "golang.org:80")
+	client := cl.Client{
+		Conn: conn,
+		Name: "test",
+	}
+
+	// call function
+	testServer.SetClientName("rick", &client.Conn)
+
+	// check that channel doesnt exist
+	if len(testServer.Clients) != 0 {
+		t.Errorf("got %d, expected %d", len(testServer.Clients), 0)
+	}
+	clearServer()
+}
+
+// test getting channels
 func TestGetChannels(t *testing.T) {
-	server.Channels["general"] = &channel.Channel{
-		Name: "general",
-	}
-	server.Channels["dev"] = &channel.Channel{
+	fmt.Println("Should return 1 channel")
+	testServer.Channels["dev"] = &ch.Channel{
 		Name: "dev",
 	}
+	actualChannels := len(testServer.GetChannels())
+	expectedChannels := 1
 
-	expectedChannels := 2
-	temp := server.GetChannels()
-	actualChannels := strings.Split(temp, ",")
-
-	if expectedChannels != len(actualChannels) {
-		t.Errorf("got %s, expected %d", actualChannels, expectedChannels)
+	if actualChannels != expectedChannels {
+		t.Errorf("got %d, expected %d", actualChannels, expectedChannels)
 	}
+	clearServer()
 }
 
+// test creating channel
 func TestCreateChannel(t *testing.T) {
-	created := server.CreateChannel("frontend")
-
-	if !created {
-		t.Errorf("Channel creation: got %t, expected %t", created, true)
+	fmt.Println("Should create a channel")
+	channel := &ch.Channel{
+		Name: "frontend",
 	}
+	testServer.CreateChannel(channel.Name)
 
-	if _, ok := server.Channels["general"]; !ok {
-		t.Errorf("Channel not added to server: got %t, expected %t", ok, true)
-	}
+	actualChannels := len(testServer.GetChannels())
+	expectedChannels := 1
 
-	if len(server.Channels) != 3 {
-		t.Errorf("got %d, expected %d", len(server.Channels), 3)
+	if actualChannels != expectedChannels {
+		t.Errorf("got %d, expected %d", actualChannels, expectedChannels)
 	}
+	clearServer()
 }
 
-func TestJoinChannel(t *testing.T) {
-	server.JoinChannel(conn, "frontend")
-	expectedMembers := 1
-	actualMembers := len(server.Channels["frontend"].Members)
-	if actualMembers != expectedMembers {
-		t.Errorf("Channel members: got %d, expected %d", actualMembers, expectedMembers)
+// test leaving a channel
+func TestLeaveChannel(t *testing.T) {
+	fmt.Println("Should leave a channel")
+	channel := &ch.Channel{
+		Name:    "frontend",
+		Members: make(map[net.Conn]*cl.Client),
 	}
+
+	conn, _ := net.Dial("tcp", "golang.org:80")
+	client := &cl.Client{
+		Conn: conn,
+		Name: "test",
+	}
+
+	testServer.AddClient(&client.Conn)
+	testServer.CreateChannel(channel.Name)
+	testServer.AddToChannel(client, channel)
+
+	channel.RemoveClientFromChannel(client)
+	testServer.RemoveChannelFromClient(client, channel.Name)
+
+	// check channel has 0 members
+	if len(channel.Members) != 0 {
+		t.Errorf("got %d, expected %d", len(channel.Members), 0)
+	}
+
+	// check client has 0 channels
+	if len(client.Channels) != 0 {
+		t.Errorf("got %d, expected %d", len(client.Channels), 0)
+	}
+	clearServer()
 }
 
-func TestShareFileToChannel(t *testing.T) {
-	conn := c.ConnectToServer("localhost", "2222")
-	server.JoinChannel(conn, "frontend")
+// test sending file
+func TestSendFile(t *testing.T) {
+	fmt.Println("Should send a file")
+	channel := &ch.Channel{
+		Name:    "frontend",
+		Members: make(map[net.Conn]*cl.Client),
+	}
+
+	conn, _ := net.Dial("tcp", "golang.org:80")
+	client := &cl.Client{
+		Conn: conn,
+		Name: "charles",
+	}
+
+	conn2, _ := net.Dial("tcp", "golang.org:80")
+	client2 := &cl.Client{
+		Conn: conn2,
+		Name: "laura",
+	}
+
+	testServer.CreateChannel(channel.Name)
+
+	testServer.AddClient(&client.Conn)
+	testServer.AddToChannel(client, channel)
+	testServer.AddChannelToClient(client, channel)
+
+	testServer.AddClient(&client2.Conn)
+	testServer.AddToChannel(client2, channel)
+	testServer.AddChannelToClient(client2, channel)
+	// fmt.Println(testServer.Channels)
+
+	// fmt.Println(channel)
+	// for _, member := range channel.Members {
+	// 	fmt.Println(member)
+	// }
+
+	// args := ["test.txt", "frontend"]
+	testServer.HandleSendFileCommand(&req.Request{
+		CommandName: "/send",
+		Args:        []string{"test.txt", "frontend"},
+		Client:      client2.Conn,
+		Content:     []byte("this is a test content that should be sent\nSend file\n"),
+	})
+	fmt.Println(testServer.Channels["frontend"])
+	clearServer()
+
 }

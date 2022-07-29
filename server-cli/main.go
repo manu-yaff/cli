@@ -1,28 +1,24 @@
-// main package for the server
 package main
 
 import (
+	api "client-server/api"
+	ch "client-server/channel"
+	cl "client-server/client"
+	req "client-server/request"
+	s "client-server/server"
 	"fmt"
 	"net"
-	"tcp-server/api"
-	"tcp-server/channel"
-	"tcp-server/client"
-	"tcp-server/file"
-	s "tcp-server/server"
-	"tcp-server/utils"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-// create tcp server
-
 func main() {
+	// create tcp server
 	server := &s.Server{
-		Clients:        make(map[net.Conn]*client.Client),
-		Channels:       make(map[string]*channel.Channel),
-		CurrentRequest: make(chan utils.Request),
-		Files:          make(map[string]*file.File),
+		Clients:        make(map[net.Conn]*cl.Client),
+		Channels:       make(map[string]*ch.Channel),
+		CurrentRequest: make(chan req.Request),
 	}
 
 	// create http server for browser client
@@ -34,9 +30,7 @@ func main() {
 	go router.Run("localhost:8888")
 	fmt.Println("Http server listening on port: 8888")
 
-	//----------------------------------------------\\
-
-	// listen for commands from client in channel
+	// listen for commands from the client
 	go server.ReadClientRequest()
 
 	// start server

@@ -1,17 +1,19 @@
 package main
 
 import (
-	"tcp-server/utils"
+	"client-server/utils"
 	"testing"
 )
 
-func TestCurrenTime(t *testing.T) {
+// tests the current time is formatted correctly
+func TestCurrentTime(t *testing.T) {
 	now := utils.CurrentTime()
 	if len(now) != 19 {
 		t.Errorf("Date should be in the format yyyy/mm/dd hh:mm:ss")
 	}
 }
 
+// tests the user input is format correctly
 func TestFormatUserInput(t *testing.T) {
 	var test = struct {
 		name string
@@ -20,6 +22,7 @@ func TestFormatUserInput(t *testing.T) {
 		"/name",
 		[]string{"jony"},
 	}
+
 	userInput := "/name jony"
 	cmd, args := utils.FormatUserInput(userInput)
 
